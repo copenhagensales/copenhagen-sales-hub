@@ -58,17 +58,34 @@ export const NewCandidateDialog = ({
       }
 
       // Create candidate
-      const { error } = await supabase.from("candidates").insert({
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        notes: formData.notes.trim() || null,
-      });
+      const { data: newCandidate, error: candidateError } = await supabase
+        .from("candidates")
+        .insert({
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          notes: formData.notes.trim() || null,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (candidateError) throw candidateError;
 
-      toast.success("Kandidat oprettet!");
+      // Create a default application for the candidate
+      const { error: applicationError } = await supabase
+        .from("applications")
+        .insert({
+          candidate_id: newCandidate.id,
+          role: "salgskonsulent", // Default role
+          status: "ny",
+          source: "Direkte",
+          application_date: new Date().toISOString(),
+        });
+
+      if (applicationError) throw applicationError;
+
+      toast.success("Kandidat og ansøgning oprettet!");
       onSuccess();
       onOpenChange(false);
       
