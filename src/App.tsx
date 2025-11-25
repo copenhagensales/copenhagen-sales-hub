@@ -7,6 +7,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { useSmsNotifications } from "@/hooks/useSmsNotifications";
+import { Button } from "@/components/ui/button";
+import { Phone } from "lucide-react";
+import { Softphone } from "@/components/Softphone";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Candidates from "./pages/Candidates";
@@ -22,6 +25,7 @@ const queryClient = new QueryClient();
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSoftphoneOpen, setIsSoftphoneOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -94,6 +98,28 @@ const App = () => {
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          
+          {/* Global Softphone - only show when logged in */}
+          {session && (
+            <>
+              {!isSoftphoneOpen && (
+                <Button
+                  onClick={() => setIsSoftphoneOpen(true)}
+                  className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+                  size="icon"
+                >
+                  <Phone className="h-6 w-6" />
+                </Button>
+              )}
+              
+              {isSoftphoneOpen && (
+                <Softphone
+                  userId={session.user.id}
+                  onClose={() => setIsSoftphoneOpen(false)}
+                />
+              )}
+            </>
+          )}
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
