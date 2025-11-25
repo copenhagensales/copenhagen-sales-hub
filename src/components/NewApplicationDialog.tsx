@@ -166,12 +166,12 @@ export const NewApplicationDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="team">Team {status === "ansat" && <span className="text-destructive">*</span>}</Label>
-            <Select value={teamId} onValueChange={setTeamId}>
+            <Select value={teamId || "none"} onValueChange={(value) => setTeamId(value === "none" ? "" : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Vælg team" />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
-                <SelectItem value="">Ingen team</SelectItem>
+                <SelectItem value="none">Ingen team</SelectItem>
                 {teams.map(team => (
                   <SelectItem key={team.id} value={team.id}>
                     {team.name}
