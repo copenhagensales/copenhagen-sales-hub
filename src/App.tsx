@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Candidates from "./pages/Candidates";
 import CandidateProfile from "./pages/CandidateProfile";
+import Employees from "./pages/Employees";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
@@ -64,6 +65,10 @@ const App = () => {
             <Route
               path="/candidates/:id"
               element={session ? <CandidateProfile /> : <Navigate to="/auth" replace />}
+            />
+            <Route
+              path="/employees"
+              element={session ? <Employees /> : <Navigate to="/auth" replace />}
             />
             <Route
               path="/pipeline"

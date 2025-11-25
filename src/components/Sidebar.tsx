@@ -7,7 +7,8 @@ import {
   Users, 
   Kanban, 
   BarChart3, 
-  LogOut
+  LogOut,
+  Briefcase
 } from "lucide-react";
 
 export const Sidebar = () => {
@@ -21,6 +22,7 @@ export const Sidebar = () => {
   const navItems = [
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/candidates", icon: Users, label: "Kandidater" },
+    { to: "/employees", icon: Briefcase, label: "Ansatte" },
     { to: "/pipeline", icon: Kanban, label: "Pipeline" },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
   ];
