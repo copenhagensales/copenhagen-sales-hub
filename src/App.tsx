@@ -21,11 +21,6 @@ const App = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Enable SMS notifications when user is logged in
-  if (session) {
-    useSmsNotifications();
-  }
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -40,6 +35,9 @@ const App = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Enable SMS notifications when user is logged in
+  useSmsNotifications();
 
   if (loading) {
     return (
