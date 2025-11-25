@@ -26,6 +26,7 @@ export type Database = {
           employment_ended_date: string | null
           hired_date: string | null
           id: string
+          interview_date: string | null
           next_step: string | null
           notes: string | null
           rejection_details: string | null
@@ -49,6 +50,7 @@ export type Database = {
           employment_ended_date?: string | null
           hired_date?: string | null
           id?: string
+          interview_date?: string | null
           next_step?: string | null
           notes?: string | null
           rejection_details?: string | null
@@ -72,6 +74,7 @@ export type Database = {
           employment_ended_date?: string | null
           hired_date?: string | null
           id?: string
+          interview_date?: string | null
           next_step?: string | null
           notes?: string | null
           rejection_details?: string | null
