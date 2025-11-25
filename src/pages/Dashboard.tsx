@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Inbox, TrendingUp, AlertCircle, UserPlus } from "lucide-react";
-import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Users, Inbox, TrendingUp, AlertCircle, UserPlus, Target } from "lucide-react";
+import { startOfMonth, endOfMonth, subMonths, format, subYears } from "date-fns";
 import { da } from "date-fns/locale";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 
 interface TeamHire {
   teamId: string;
@@ -19,6 +20,14 @@ interface TrendDataPoint {
   [key: string]: string | number;
 }
 
+interface TeamConversion {
+  teamId: string;
+  teamName: string;
+  totalApplications: number;
+  hiredCount: number;
+  conversionRate: number;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState({
     totalApplications: 0,
@@ -28,12 +37,18 @@ const Dashboard = () => {
   });
   const [teamHires, setTeamHires] = useState<TeamHire[]>([]);
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
+  const [conversionData, setConversionData] = useState<TeamConversion[]>([]);
+  const [conversionPeriod, setConversionPeriod] = useState<string>("6months");
 
   useEffect(() => {
     fetchStats();
     fetchTeamHires();
     fetchTeamHiresTrend();
   }, []);
+
+  useEffect(() => {
+    fetchTeamConversionRates();
+  }, [conversionPeriod]);
 
   const fetchStats = async () => {
     try {
@@ -174,6 +189,76 @@ const Dashboard = () => {
     }
   };
 
+  const fetchTeamConversionRates = async () => {
+    try {
+      // Calculate date range based on selected period
+      const now = new Date();
+      let startDate: string;
+      
+      switch (conversionPeriod) {
+        case "1month":
+          startDate = subMonths(now, 1).toISOString().split("T")[0];
+          break;
+        case "3months":
+          startDate = subMonths(now, 3).toISOString().split("T")[0];
+          break;
+        case "6months":
+          startDate = subMonths(now, 6).toISOString().split("T")[0];
+          break;
+        case "1year":
+          startDate = subYears(now, 1).toISOString().split("T")[0];
+          break;
+        case "all":
+          startDate = "2000-01-01"; // Far back enough to get all data
+          break;
+        default:
+          startDate = subMonths(now, 6).toISOString().split("T")[0];
+      }
+
+      // Fetch all teams
+      const { data: teams, error: teamsError } = await supabase
+        .from("teams")
+        .select("id, name")
+        .order("name");
+
+      if (teamsError) throw teamsError;
+
+      // Fetch all applications in the period
+      const { data: allApps, error: appsError } = await supabase
+        .from("applications")
+        .select("team_id, status")
+        .not("team_id", "is", null)
+        .gte("application_date", startDate);
+
+      if (appsError) throw appsError;
+
+      // Calculate conversion rates per team
+      const conversionStats: TeamConversion[] = (teams || []).map((team) => {
+        const teamApps = allApps?.filter(app => app.team_id === team.id) || [];
+        const totalApplications = teamApps.length;
+        const hiredCount = teamApps.filter(app => app.status === "ansat").length;
+        const conversionRate = totalApplications > 0 
+          ? Math.round((hiredCount / totalApplications) * 100) 
+          : 0;
+
+        return {
+          teamId: team.id,
+          teamName: team.name,
+          totalApplications,
+          hiredCount,
+          conversionRate,
+        };
+      });
+
+      // Sort by conversion rate descending
+      conversionStats.sort((a, b) => b.conversionRate - a.conversionRate);
+
+      setConversionData(conversionStats);
+    } catch (error) {
+      console.error("Error fetching team conversion rates:", error);
+    }
+  };
+
   const statCards = [
     {
       title: "Nye ansøgninger",
@@ -230,7 +315,97 @@ const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <Card>
+          <Card className="mb-6">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                <CardTitle>Team Konverteringsrater</CardTitle>
+              </div>
+              <Select value={conversionPeriod} onValueChange={setConversionPeriod}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Vælg periode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1month">Sidste måned</SelectItem>
+                  <SelectItem value="3months">Sidste 3 måneder</SelectItem>
+                  <SelectItem value="6months">Sidste 6 måneder</SelectItem>
+                  <SelectItem value="1year">Sidste år</SelectItem>
+                  <SelectItem value="all">Alle data</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent>
+              {conversionData.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Indlæser konverteringsdata...</p>
+              ) : (
+                <div className="space-y-6">
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={conversionData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="teamName" 
+                          className="text-xs"
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <YAxis 
+                          className="text-xs"
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          label={{ value: 'Konverteringsrate (%)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--popover))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                          labelStyle={{ color: 'hsl(var(--foreground))' }}
+                          formatter={(value: any, name: string) => {
+                            if (name === "conversionRate") return [`${value}%`, "Konverteringsrate"];
+                            return [value, name];
+                          }}
+                        />
+                        <Bar 
+                          dataKey="conversionRate" 
+                          fill="hsl(var(--primary))" 
+                          radius={[8, 8, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-semibold mb-3">Detaljeret oversigt</h4>
+                    <div className="space-y-3">
+                      {conversionData.map((team) => (
+                        <div key={team.teamId} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium">{team.teamName}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {team.hiredCount} ansatte af {team.totalApplications} ansøgninger
+                            </div>
+                          </div>
+                          <Badge 
+                            className={
+                              team.conversionRate >= 15 
+                                ? "bg-status-success/10 text-status-success border-status-success/20" 
+                                : team.conversionRate >= 10
+                                ? "bg-status-warning/10 text-status-warning border-status-warning/20"
+                                : "bg-status-rejected/10 text-status-rejected border-status-rejected/20"
+                            }
+                          >
+                            {team.conversionRate}%
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Nye ansættelser denne måned</CardTitle>
                 <UserPlus className="h-5 w-5 text-status-success" />
