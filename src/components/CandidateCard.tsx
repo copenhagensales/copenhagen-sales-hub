@@ -184,6 +184,63 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
     }
   };
 
+  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    try {
+      const app = applications.find(a => a.id === applicationId);
+      if (newStatus === "ansat" && !app?.team_id) {
+        toast.error("Du skal vælge et team før du kan sætte status til Ansat");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("applications")
+        .update({ status: newStatus as any })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Status opdateret!");
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere status");
+      console.error(error);
+    }
+  };
+
+  const handleRoleChange = async (applicationId: string, newRole: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ role: newRole as any })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Rolle opdateret!");
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere rolle");
+      console.error(error);
+    }
+  };
+
+  const handleSourceChange = async (applicationId: string, newSource: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ source: newSource || null })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Kilde opdateret!");
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere kilde");
+      console.error(error);
+    }
+  };
+
   return (
     <>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -312,19 +369,56 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                     key={app.id}
                     className="bg-muted/30 rounded-lg p-3 space-y-2"
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className={roleColors[app.role]} variant="outline">
-                          {roleLabels[app.role]}
-                        </Badge>
-                        <Badge className={statusColors[app.status]} variant="outline">
-                          {statusLabels[app.status]}
-                        </Badge>
-                        {app.team_id && teams.length > 0 && (
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                            {teams.find(t => t.id === app.team_id)?.name}
-                          </Badge>
-                        )}
+                        {/* Role selector */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Rolle:</span>
+                          <Select
+                            value={app.role}
+                            onValueChange={(value) => handleRoleChange(app.id, value)}
+                          >
+                            <SelectTrigger className="h-7 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                              <SelectValue>
+                                <Badge className={roleColors[app.role]} variant="outline">
+                                  {roleLabels[app.role]}
+                                </Badge>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover z-50">
+                              <SelectItem value="fieldmarketing">Fieldmarketing</SelectItem>
+                              <SelectItem value="salgskonsulent">Salgskonsulent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Status selector */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Status:</span>
+                          <Select
+                            value={app.status}
+                            onValueChange={(value) => handleStatusChange(app.id, value)}
+                          >
+                            <SelectTrigger className="h-7 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                              <SelectValue>
+                                <Badge className={statusColors[app.status]} variant="outline">
+                                  {statusLabels[app.status]}
+                                </Badge>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover z-50">
+                              <SelectItem value="ny">Ny</SelectItem>
+                              <SelectItem value="telefon_screening">Telefon-screening</SelectItem>
+                              <SelectItem value="case_rollespil">Case/Rollespil</SelectItem>
+                              <SelectItem value="interview">Interview</SelectItem>
+                              <SelectItem value="tilbud">Tilbud</SelectItem>
+                              <SelectItem value="ansat">Ansat</SelectItem>
+                              <SelectItem value="afslag">Afslag</SelectItem>
+                              <SelectItem value="ghosted_cold">Ghosted/Cold</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
                         {index === 0 && (
                           <Badge variant="secondary" className="text-xs">Seneste</Badge>
                         )}
@@ -333,6 +427,32 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                         <Calendar className="h-3 w-3" />
                         {format(new Date(app.application_date), "d. MMM yyyy", { locale: da })}
                       </div>
+                    </div>
+
+                    {/* Source selector */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Kilde:</span>
+                      <Select
+                        value={app.source || "none"}
+                        onValueChange={(value) => handleSourceChange(app.id, value === "none" ? "" : value)}
+                      >
+                        <SelectTrigger className="h-7 w-auto gap-2 text-xs">
+                          <SelectValue>
+                            {app.source || "Ikke angivet"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover z-50">
+                          <SelectItem value="none">Ikke angivet</SelectItem>
+                          <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                          <SelectItem value="Jobindex">Jobindex</SelectItem>
+                          <SelectItem value="Indeed">Indeed</SelectItem>
+                          <SelectItem value="Facebook">Facebook</SelectItem>
+                          <SelectItem value="Direkte">Direkte</SelectItem>
+                          <SelectItem value="Referral">Referral</SelectItem>
+                          <SelectItem value="Zapier">Zapier</SelectItem>
+                          <SelectItem value="Andet">Andet</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     {teams.length > 0 && (
@@ -379,12 +499,6 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                       <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
                         <span className="font-medium">Ansøgningstekst: </span>
                         <span className="whitespace-pre-wrap">{app.notes}</span>
-                      </div>
-                    )}
-
-                    {app.source && (
-                      <div className="text-xs text-muted-foreground">
-                        Kilde: {app.source}
                       </div>
                     )}
                   </div>
