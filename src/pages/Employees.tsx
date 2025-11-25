@@ -543,94 +543,163 @@ const RevenueDialog = ({
 
           {/* Revenue Entry Fields */}
           <div>
-            <h3 className="font-semibold mb-3">Dækningsbidrag</h3>
-            <div className="grid gap-4">
+            <h3 className="font-semibold mb-4 text-lg">Dækningsbidrag</h3>
+            <div className="grid gap-3">
               {/* 30 days */}
-              <div className="flex items-center gap-3">
-                <Label className="w-24">30 dage</Label>
-                <Input
-                  type="number"
-                  value={day30Value}
-                  onChange={(e) => setDay30Value(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <span className="text-sm text-muted-foreground">kr</span>
-                <Button
-                  size="sm"
-                  onClick={() => handleSave(30, day30Value)}
-                  disabled={day30Value === (revenue30?.revenue || 0)}
-                >
-                  Gem
-                </Button>
-                {revenue30 && (
+              <Card className="p-4 bg-gradient-to-r from-primary/5 to-transparent border-l-4 border-l-primary">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Første måned</div>
+                    <div className="text-lg font-bold">30 dage</div>
+                  </div>
+                  {revenue30 && (
+                    <Badge variant="outline" className="bg-primary/10">
+                      Gemt
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground mb-2 block">Beløb</Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={day30Value}
+                        onChange={(e) => setDay30Value(parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        className="pr-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">kr</span>
+                    </div>
+                  </div>
                   <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(30)}
+                    onClick={() => handleSave(30, day30Value)}
+                    disabled={day30Value === (revenue30?.revenue || 0)}
+                    className="shrink-0"
                   >
-                    Slet
+                    Gem
                   </Button>
-                )}
-              </div>
+                  {revenue30 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(30)}
+                      className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <span className="sr-only">Slet</span>
+                      ×
+                    </Button>
+                  )}
+                </div>
+              </Card>
 
               {/* 60 days */}
-              <div className="flex items-center gap-3">
-                <Label className="w-24">60 dage</Label>
-                <Input
-                  type="number"
-                  value={day60Value}
-                  onChange={(e) => setDay60Value(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <span className="text-sm text-muted-foreground">kr</span>
-                <Button
-                  size="sm"
-                  onClick={() => handleSave(60, day60Value)}
-                  disabled={day60Value === (revenue60?.revenue || 0)}
-                >
-                  Gem
-                </Button>
-                {revenue60 && (
+              <Card className="p-4 bg-gradient-to-r from-secondary/5 to-transparent border-l-4 border-l-secondary">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Anden måned</div>
+                    <div className="text-lg font-bold">60 dage</div>
+                  </div>
+                  {revenue60 && (
+                    <Badge variant="outline" className="bg-secondary/10">
+                      Gemt
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground mb-2 block">Beløb</Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={day60Value}
+                        onChange={(e) => setDay60Value(parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        className="pr-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">kr</span>
+                    </div>
+                  </div>
                   <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(60)}
+                    onClick={() => handleSave(60, day60Value)}
+                    disabled={day60Value === (revenue60?.revenue || 0)}
+                    className="shrink-0"
                   >
-                    Slet
+                    Gem
                   </Button>
-                )}
-              </div>
+                  {revenue60 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(60)}
+                      className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <span className="sr-only">Slet</span>
+                      ×
+                    </Button>
+                  )}
+                </div>
+              </Card>
 
               {/* 90 days */}
-              <div className="flex items-center gap-3">
-                <Label className="w-24">90 dage</Label>
-                <Input
-                  type="number"
-                  value={day90Value}
-                  onChange={(e) => setDay90Value(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <span className="text-sm text-muted-foreground">kr</span>
-                <Button
-                  size="sm"
-                  onClick={() => handleSave(90, day90Value)}
-                  disabled={day90Value === (revenue90?.revenue || 0)}
-                >
-                  Gem
-                </Button>
-                {revenue90 && (
+              <Card className="p-4 bg-gradient-to-r from-accent/5 to-transparent border-l-4 border-l-accent">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Tredje måned</div>
+                    <div className="text-lg font-bold">90 dage</div>
+                  </div>
+                  {revenue90 && (
+                    <Badge variant="outline" className="bg-accent/10">
+                      Gemt
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground mb-2 block">Beløb</Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={day90Value}
+                        onChange={(e) => setDay90Value(parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        className="pr-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">kr</span>
+                    </div>
+                  </div>
                   <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(90)}
+                    onClick={() => handleSave(90, day90Value)}
+                    disabled={day90Value === (revenue90?.revenue || 0)}
+                    className="shrink-0"
                   >
-                    Slet
+                    Gem
                   </Button>
-                )}
-              </div>
+                  {revenue90 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(90)}
+                      className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <span className="sr-only">Slet</span>
+                      ×
+                    </Button>
+                  )}
+                </div>
+              </Card>
+
+              {/* Total Summary */}
+              {(revenue30 || revenue60 || revenue90) && (
+                <Card className="p-4 bg-muted/30 border-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">Total dækningsbidrag</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {((revenue30?.revenue || 0) + (revenue60?.revenue || 0) + (revenue90?.revenue || 0)).toLocaleString()} kr
+                    </span>
+                  </div>
+                </Card>
+              )}
             </div>
           </div>
         </div>
