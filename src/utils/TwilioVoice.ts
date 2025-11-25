@@ -37,9 +37,32 @@ export class TwilioVoiceManager {
 
       console.log('Access token received, length:', data.token.length);
       console.log('Token first 50 chars:', data.token.substring(0, 50));
+      
+      // Decode token to verify structure (for debugging)
+      try {
+        const parts = data.token.split('.');
+        if (parts.length === 3) {
+          const header = JSON.parse(atob(parts[0]));
+          const payload = JSON.parse(atob(parts[1]));
+          console.log('🔍 JWT Header:', header);
+          console.log('🔍 JWT Payload iss (should start with SK):', payload.iss);
+          console.log('🔍 JWT Payload sub (should start with AC):', payload.sub);
+          console.log('🔍 JWT Payload grants:', payload.grants);
+          console.log('🔍 JWT Payload exp:', new Date(payload.exp * 1000).toISOString());
+          console.log('🔍 Current time:', new Date().toISOString());
+        }
+      } catch (e) {
+        console.error('❌ Error decoding token:', e);
+      }
+
+      // Verify we're passing a string, not an object
+      const tokenString = typeof data.token === 'string' ? data.token : JSON.stringify(data.token);
+      console.log('🔧 Token being passed to Twilio.Device (type):', typeof tokenString);
+      console.log('🔧 Is pure string?:', typeof tokenString === 'string');
 
       // Initialize device
-      this.device = new Device(data.token, {
+      console.log('🔧 Initializing Twilio Device with token...');
+      this.device = new Device(tokenString, {
         logLevel: 1,
         codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
       });
