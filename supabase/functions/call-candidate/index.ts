@@ -42,17 +42,17 @@ serve(async (req) => {
     }
 
     const appBaseUrl = Deno.env.get('SUPABASE_URL')?.replace('/rest/v1', '');
-    const bridgeUrl = `${appBaseUrl}/functions/v1/bridge-candidate?candidate=${encodeURIComponent(candidatePhone)}`;
+    const bridgeUrl = `${appBaseUrl}/functions/v1/bridge-candidate?agent=${encodeURIComponent(agentNumber)}`;
 
-    console.log(`Starting call: Agent ${agentNumber} -> Candidate ${candidatePhone}`);
+    console.log(`Starting call: Candidate ${candidatePhone} -> Agent ${agentNumber}`);
     console.log(`Bridge URL: ${bridgeUrl}`);
 
-    // Call Twilio API to create call
+    // Call Twilio API to create call - ring til kandidaten først
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`;
     const auth = btoa(`${accountSid}:${authToken}`);
 
     const formData = new URLSearchParams({
-      To: agentNumber,
+      To: candidatePhone,  // Ring til kandidaten først
       From: callerNumber,
       Url: bridgeUrl,
     });
