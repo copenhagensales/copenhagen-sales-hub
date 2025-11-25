@@ -346,9 +346,19 @@ const CandidateProfile = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => {
-                  setSoftphoneInitialNumber(candidate.phone);
-                  setShowSoftphone(true);
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.functions.invoke('call-candidate', {
+                      body: { candidatePhone: candidate.phone }
+                    });
+                    
+                    if (error) throw error;
+                    
+                    toast.success("Twilio ringer dig op nu og forbinder til kandidaten");
+                  } catch (err: any) {
+                    console.error('Call error:', err);
+                    toast.error("Kunne ikke starte opkaldet");
+                  }
                 }}
               >
                 <Phone className="mr-2 h-4 w-4" />
@@ -399,9 +409,19 @@ const CandidateProfile = () => {
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Phone className="h-4 w-4" />
                   <button
-                    onClick={() => {
-                      setSoftphoneInitialNumber(candidate.phone);
-                      setShowSoftphone(true);
+                    onClick={async () => {
+                      try {
+                        const { data, error } = await supabase.functions.invoke('call-candidate', {
+                          body: { candidatePhone: candidate.phone }
+                        });
+                        
+                        if (error) throw error;
+                        
+                        toast.success("Twilio ringer dig op nu og forbinder til kandidaten");
+                      } catch (err: any) {
+                        console.error('Call error:', err);
+                        toast.error("Kunne ikke starte opkaldet");
+                      }
                     }}
                     className="hover:text-primary hover:underline cursor-pointer text-left"
                   >

@@ -2,3 +2,9 @@ project_id = "vlspljhqyanpadbucmvq"
 
 [functions.twilio-token]
 verify_jwt = false
+
+[functions.call-candidate]
+verify_jwt = false
+
+[functions.bridge-candidate]
+verify_jwt = false
