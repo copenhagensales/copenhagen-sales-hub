@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { NewApplicationDialog } from "@/components/NewApplicationDialog";
+import { Softphone } from "@/components/Softphone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,8 +87,18 @@ const CandidateProfile = () => {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewApplicationDialog, setShowNewApplicationDialog] = useState(false);
+  const [showSoftphone, setShowSoftphone] = useState(false);
+  const [userId, setUserId] = useState<string>('');
 
   useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    getCurrentUser();
+
     if (id) {
       fetchCandidateData();
     }
@@ -324,7 +335,7 @@ const CandidateProfile = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => window.open(`tel:${candidate.phone}`)}
+                onClick={() => setShowSoftphone(true)}
               >
                 <Phone className="mr-2 h-4 w-4" />
                 Ring op
@@ -345,6 +356,13 @@ const CandidateProfile = () => {
             candidateName={`${candidate.first_name} ${candidate.last_name}`}
             onSuccess={fetchCandidateData}
           />
+
+          {showSoftphone && userId && (
+            <Softphone
+              userId={userId}
+              onClose={() => setShowSoftphone(false)}
+            />
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <Card className="lg:col-span-2">
