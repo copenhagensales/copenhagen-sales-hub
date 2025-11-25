@@ -50,10 +50,10 @@ interface TeamForecast {
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
-    totalApplications: 0,
-    newApplications: 0,
-    activeApplications: 0,
-    overdueApplications: 0,
+    last30Days: 0,
+    last24Hours: 0,
+    last7Days: 0,
+    noStatusChange24Hours: 0,
   });
   const [teamHires, setTeamHires] = useState<TeamHire[]>([]);
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
@@ -75,32 +75,41 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const { count: totalApplications } = await supabase
-        .from("applications")
-        .select("*", { count: "exact", head: true });
+      const now = new Date();
+      const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-      const { count: newApplications } = await supabase
+      // Applications received in last 30 days
+      const { count: last30DaysCount } = await supabase
         .from("applications")
         .select("*", { count: "exact", head: true })
-        .eq("status", "ny");
+        .gte("application_date", last30Days);
 
-      const { count: activeApplications } = await supabase
+      // Applications received in last 24 hours
+      const { count: last24HoursCount } = await supabase
         .from("applications")
         .select("*", { count: "exact", head: true })
-        .in("status", ["telefon_screening", "case_rollespil", "interview", "tilbud"]);
+        .gte("application_date", last24Hours);
 
-      const today = new Date().toISOString().split("T")[0];
-      const { count: overdueApplications } = await supabase
+      // Applications received in last 7 days
+      const { count: last7DaysCount } = await supabase
         .from("applications")
         .select("*", { count: "exact", head: true })
-        .lt("deadline", today)
+        .gte("application_date", last7Days);
+
+      // Applications with no status change in last 24 hours
+      const { count: noStatusChange } = await supabase
+        .from("applications")
+        .select("*", { count: "exact", head: true })
+        .lt("updated_at", last24Hours)
         .not("status", "in", '("ansat","afslag","ghosted_cold")');
 
       setStats({
-        totalApplications: totalApplications || 0,
-        newApplications: newApplications || 0,
-        activeApplications: activeApplications || 0,
-        overdueApplications: overdueApplications || 0,
+        last30Days: last30DaysCount || 0,
+        last24Hours: last24HoursCount || 0,
+        last7Days: last7DaysCount || 0,
+        noStatusChange24Hours: noStatusChange || 0,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -499,26 +508,26 @@ const Dashboard = () => {
 
   const statCards = [
     {
-      title: "Nye ansøgninger",
-      value: stats.newApplications,
+      title: "Sidste 24 timer",
+      value: stats.last24Hours,
       icon: Inbox,
       color: "text-status-new",
     },
     {
-      title: "Aktive ansøgninger",
-      value: stats.activeApplications,
+      title: "Sidste 7 dage",
+      value: stats.last7Days,
       icon: TrendingUp,
       color: "text-status-progress",
     },
     {
-      title: "Total ansøgninger",
-      value: stats.totalApplications,
+      title: "Sidste 30 dage",
+      value: stats.last30Days,
       icon: Users,
       color: "text-primary",
     },
     {
-      title: "Overskredet deadline",
-      value: stats.overdueApplications,
+      title: "Ingen ændring i 24 timer",
+      value: stats.noStatusChange24Hours,
       icon: AlertCircle,
       color: "text-status-rejected",
     },
