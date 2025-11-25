@@ -29,6 +29,9 @@ serve(async (req) => {
     }
 
     console.log('Generating access token for identity:', identity);
+    console.log('Using API Key SID:', TWILIO_API_KEY_SID);
+    console.log('Using Account SID:', TWILIO_ACCOUNT_SID);
+    console.log('Using TwiML App SID:', TWILIO_TWIML_APP_SID);
 
     // Create JWT token manually for Twilio Voice
     const now = Math.floor(Date.now() / 1000);
@@ -58,6 +61,8 @@ serve(async (req) => {
       }
     };
 
+    console.log('JWT Payload:', JSON.stringify(payload, null, 2));
+
     // Base64URL encode using Deno standard library
     const encoder = new TextEncoder();
     const encodedHeader = encodeBase64Url(encoder.encode(JSON.stringify(header)));
@@ -80,6 +85,7 @@ serve(async (req) => {
 
     const token = `${signatureInput}.${encodedSignature}`;
 
+    console.log('Generated token (first 50 chars):', token.substring(0, 50));
     console.log('Access token generated successfully');
 
     return new Response(
