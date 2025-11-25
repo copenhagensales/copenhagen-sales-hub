@@ -726,224 +726,15 @@ const CandidateProfile = () => {
                 </Card>
               </div>
 
-              <Tabs defaultValue="applications" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:w-auto">
-              <TabsTrigger value="applications">Ansøgninger</TabsTrigger>
-              <TabsTrigger value="communication">Kommunikation</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="applications" className="space-y-4">
-              {applications.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    Ingen ansøgninger fundet
-                  </CardContent>
+              {/* Communication Section */}
+              <div className="w-full">
+                <Card className="mb-4">
+                  <CardHeader>
+                    <CardTitle>Kommunikation</CardTitle>
+                  </CardHeader>
                 </Card>
-              ) : (
-                applications.map((app) => (
-                  <Card key={app.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-3 flex-wrap">
-                            {/* Role selector */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-muted-foreground">Rolle:</span>
-                              <Select
-                                value={app.role}
-                                onValueChange={(value) => handleRoleChange(app.id, value)}
-                              >
-                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                                  <SelectValue>
-                                    <Badge className={roleColors[app.role]}>
-                                      {roleLabels[app.role]}
-                                    </Badge>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover z-50">
-                                  <SelectItem value="fieldmarketing">Fieldmarketing</SelectItem>
-                                  <SelectItem value="salgskonsulent">Salgskonsulent</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Status selector */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-muted-foreground">Status:</span>
-                              <Select
-                                value={app.status}
-                                onValueChange={(value) => handleStatusChange(app.id, value)}
-                              >
-                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                                  <SelectValue>
-                                    <Badge className={statusColors[app.status]}>
-                                      {statusLabels[app.status]}
-                                    </Badge>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover z-50">
-                                  <SelectItem value="ny">Ny</SelectItem>
-                                  <SelectItem value="telefon_screening">Telefon-screening</SelectItem>
-                                  <SelectItem value="case_rollespil">Case/Rollespil</SelectItem>
-                                  <SelectItem value="interview">Interview</SelectItem>
-                                  <SelectItem value="tilbud">Tilbud</SelectItem>
-                                  <SelectItem value="ansat">Ansat</SelectItem>
-                                  <SelectItem value="afslag">Afslag</SelectItem>
-                                  <SelectItem value="ghosted_cold">Ghosted/Cold</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Source selector */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-muted-foreground">Kilde:</span>
-                              <Select
-                                value={app.source || "none"}
-                                onValueChange={(value) => handleSourceChange(app.id, value === "none" ? "" : value)}
-                              >
-                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                                  <SelectValue>
-                                    <Badge variant="outline">
-                                      {app.source || "Ikke angivet"}
-                                    </Badge>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover z-50">
-                                  <SelectItem value="none">Ikke angivet</SelectItem>
-                                  <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                                  <SelectItem value="Jobindex">Jobindex</SelectItem>
-                                  <SelectItem value="Indeed">Indeed</SelectItem>
-                                  <SelectItem value="Facebook">Facebook</SelectItem>
-                                  <SelectItem value="Direkte">Direkte</SelectItem>
-                                  <SelectItem value="Referral">Referral</SelectItem>
-                                  <SelectItem value="Zapier">Zapier</SelectItem>
-                                  <SelectItem value="Andet">Andet</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {/* Team selector - always visible */}
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm text-muted-foreground">
-                              Team {app.status === "ansat" && <span className="text-destructive">*</span>}:
-                            </span>
-                            <Select
-                              value={app.team_id || "none"}
-                              onValueChange={(value) => handleTeamChange(app.id, value === "none" ? "" : value)}
-                            >
-                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                                <SelectValue>
-                                  <Badge variant="outline" className={app.team_id ? "bg-primary/10 text-primary border-primary/20" : ""}>
-                                    {teams.find(t => t.id === app.team_id)?.name || "Vælg team"}
-                                  </Badge>
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent className="bg-popover z-50">
-                                <SelectItem value="none">Ingen team</SelectItem>
-                                {teams.map(team => (
-                                  <SelectItem key={team.id} value={team.id}>
-                                    {team.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="text-sm text-muted-foreground mb-2">
-                            {format(new Date(app.application_date), "d. MMMM yyyy 'kl.' HH:mm", { locale: da })}
-                          </div>
-
-                          {/* Quick actions */}
-                          <div className="flex items-center gap-2 mt-3">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                try {
-                                  setCurrentCallPhone(candidate.phone);
-                                  setShowCallStatus(true);
-                                  
-                                  const { data, error } = await supabase.functions.invoke('call-candidate', {
-                                    body: { candidatePhone: candidate.phone }
-                                  });
-                                  
-                                  if (error) throw error;
-                                  
-                                  if (data?.sid) {
-                                    setCurrentCallSid(data.sid);
-                                  }
-                                  
-                                  toast.success("Systemet forbinder dig med kandidaten");
-                                } catch (err: any) {
-                                  console.error('Call error:', err);
-                                  toast.error("Kunne ikke starte opkaldet");
-                                  setShowCallStatus(false);
-                                }
-                              }}
-                              className="h-8"
-                            >
-                              <Phone className="h-3.5 w-3.5 mr-1.5" />
-                              Ring op
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSmsApplicationId(app.id);
-                                setShowSmsDialog(true);
-                              }}
-                              className="h-8"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-                              SMS
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => window.open(`mailto:${candidate.email}`)}
-                              className="h-8"
-                            >
-                              <Mail className="h-3.5 w-3.5 mr-1.5" />
-                              Email
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {app.next_step && (
-                        <div className="mb-3 p-3 bg-muted/50 rounded">
-                          <span className="font-medium text-sm">Næste skridt:</span>
-                          <p className="text-sm">{app.next_step}</p>
-                        </div>
-                      )}
-
-                      {app.deadline && (
-                        <div className="text-sm text-muted-foreground mb-3">
-                          <strong>Deadline:</strong> {format(new Date(app.deadline), "d. MMMM yyyy", { locale: da })}
-                        </div>
-                      )}
-
-                       {app.notes && (
-                         <div className="mb-3 p-3 bg-muted/50 rounded">
-                           <span className="font-medium text-sm">Ansøgningstekst:</span>
-                           <p className="text-sm mt-1 whitespace-pre-wrap">{app.notes}</p>
-                         </div>
-                       )}
-
-                      {app.rejection_reason && (
-                        <div className="mt-3 p-3 bg-destructive/10 rounded text-sm">
-                          <strong>Afslagsårsag:</strong> {app.rejection_reason}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </TabsContent>
-
-            <TabsContent value="communication" className="space-y-4">
+                
+                <div className="space-y-4">
               {communications.length === 0 ? (
                 <Card>
                   <CardContent className="py-8 text-center text-muted-foreground">
@@ -1012,10 +803,9 @@ const CandidateProfile = () => {
                   </Card>
                 ))
               )}
-            </TabsContent>
-
-            </Tabs>
+            </div>
           </div>
+        </div>
 
           {/* Right column - Quick Notes Sidebar */}
           <div className="hidden xl:block sticky top-6 h-[calc(100vh-120px)]">
