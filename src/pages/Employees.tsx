@@ -204,6 +204,74 @@ const Employees = () => {
     }
   };
 
+  const handleStatusChange = async (employeeId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ status: newStatus as any })
+        .eq("id", employeeId);
+
+      if (error) throw error;
+
+      toast.success("Status opdateret!");
+      fetchEmployees();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere status");
+      console.error(error);
+    }
+  };
+
+  const handleTeamChange = async (employeeId: string, newTeamId: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ team_id: newTeamId || null })
+        .eq("id", employeeId);
+
+      if (error) throw error;
+
+      toast.success("Team opdateret!");
+      fetchEmployees();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere team");
+      console.error(error);
+    }
+  };
+
+  const handleRoleChange = async (employeeId: string, newRole: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ role: newRole as any })
+        .eq("id", employeeId);
+
+      if (error) throw error;
+
+      toast.success("Stilling opdateret!");
+      fetchEmployees();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere stilling");
+      console.error(error);
+    }
+  };
+
+  const handleHiredDateChange = async (employeeId: string, newDate: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ hired_date: newDate })
+        .eq("id", employeeId);
+
+      if (error) throw error;
+
+      toast.success("Ansat dato opdateret!");
+      fetchEmployees();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere ansat dato");
+      console.error(error);
+    }
+  };
+
   const roleLabels: Record<string, string> = {
     fieldmarketing: "Fieldmarketing",
     salgskonsulent: "Salgskonsulent",
@@ -375,33 +443,107 @@ const Employees = () => {
                     )}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-3">
                           <h3 className="text-lg font-semibold">
                             {emp.candidate.first_name} {emp.candidate.last_name}
                           </h3>
-                          <Badge variant="outline">{roleLabels[emp.role]}</Badge>
-                          {emp.team && (
-                            <Badge className="bg-primary/10 text-primary border-primary/20">
-                              {emp.team.name}
-                            </Badge>
-                          )}
-                          {emp.employment_ended_date ? (
-                            <Badge variant="outline" className="bg-status-rejected/10 text-status-rejected border-status-rejected/20">
-                              Stoppet
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-status-success/10 text-status-success border-status-success/20">
-                              Ansat
-                            </Badge>
-                          )}
+                        </div>
+
+                        {/* Editable fields */}
+                        <div className="space-y-2 mb-4">
+                          {/* Status */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground w-20">Status:</span>
+                            <Select
+                              value={emp.employment_ended_date ? "stopped" : "ansat"}
+                              onValueChange={(value) => {
+                                if (value === "stopped" && !emp.employment_ended_date) {
+                                  setSelectedEmployee(emp);
+                                  setShowStopDialog(true);
+                                } else if (value === "ansat") {
+                                  handleStatusChange(emp.id, "ansat");
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                <SelectValue>
+                                  {emp.employment_ended_date ? (
+                                    <Badge variant="outline" className="bg-status-rejected/10 text-status-rejected border-status-rejected/20">
+                                      Stoppet
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="bg-status-success/10 text-status-success border-status-success/20">
+                                      Ansat
+                                    </Badge>
+                                  )}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="ansat">Ansat</SelectItem>
+                                <SelectItem value="stopped">Stoppet</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Team */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground w-20">Team:</span>
+                            <Select
+                              value={emp.team_id || "none"}
+                              onValueChange={(value) => handleTeamChange(emp.id, value === "none" ? "" : value)}
+                            >
+                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                <SelectValue>
+                                  <Badge className="bg-primary/10 text-primary border-primary/20">
+                                    {emp.team?.name || "Intet team"}
+                                  </Badge>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="none">Intet team</SelectItem>
+                                {teams.map((team) => (
+                                  <SelectItem key={team.id} value={team.id}>
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Role */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground w-20">Stilling:</span>
+                            <Select
+                              value={emp.role}
+                              onValueChange={(value) => handleRoleChange(emp.id, value)}
+                            >
+                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                <SelectValue>
+                                  <Badge variant="outline">{roleLabels[emp.role]}</Badge>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="fieldmarketing">Fieldmarketing</SelectItem>
+                                <SelectItem value="salgskonsulent">Salgskonsulent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Hired Date */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground w-20">Ansat:</span>
+                            <Input
+                              type="date"
+                              value={emp.hired_date}
+                              onChange={(e) => handleHiredDateChange(emp.id, e.target.value)}
+                              className="h-8 w-auto"
+                            />
+                          </div>
                         </div>
 
                         <div className="text-sm text-muted-foreground space-y-1 mb-3">
                           <div>Email: {emp.candidate.email}</div>
                           <div>Telefon: {emp.candidate.phone}</div>
-                          <div>
-                            Ansat: {format(new Date(emp.hired_date), "d. MMMM yyyy", { locale: da })}
-                          </div>
                           {emp.employment_ended_date && (
                             <>
                               <div>
@@ -459,19 +601,6 @@ const Employees = () => {
                           <DollarSign className="h-4 w-4 mr-1" />
                           Dækningsbidrag
                         </Button>
-                        {!emp.employment_ended_date && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedEmployee(emp);
-                              setShowStopDialog(true);
-                            }}
-                          >
-                            <Calendar className="h-4 w-4 mr-1" />
-                            Marker som stoppet
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </CardContent>
