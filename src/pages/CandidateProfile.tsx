@@ -366,31 +366,35 @@ const CandidateProfile = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-6">
+      <div className="flex-1 overflow-auto md:pt-0 pt-16">
+        <div className="p-4 md:p-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
             <Button
               variant="ghost"
               onClick={() => navigate("/candidates")}
+              className="w-full md:w-auto"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Tilbage til kandidater
             </Button>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 onClick={() => setShowEditCandidateDialog(true)}
+                className="flex-1 md:flex-initial"
               >
-                <Edit className="mr-2 h-4 w-4" />
-                Rediger kandidat
+                <Edit className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Rediger kandidat</span>
+                <span className="md:hidden">Rediger</span>
               </Button>
               <Button
                 variant="outline"
                 onClick={() => window.open(`mailto:${candidate.email}`)}
+                className="flex-1 md:flex-initial"
               >
-                <Mail className="mr-2 h-4 w-4" />
-                Send email
+                <Mail className="h-4 w-4 md:mr-2" />
+                <span className="hidden sm:inline ml-1">Email</span>
               </Button>
               <Button
                 variant="outline"
@@ -408,12 +412,14 @@ const CandidateProfile = () => {
                     toast.error("Kunne ikke starte opkaldet");
                   }
                 }}
+                className="flex-1 md:flex-initial"
               >
-                <Phone className="mr-2 h-4 w-4" />
-                Ring op
+                <Phone className="h-4 w-4 md:mr-2" />
+                <span className="hidden sm:inline ml-1">Ring op</span>
               </Button>
               <Button
                 onClick={() => setShowNewApplicationDialog(true)}
+                className="w-full md:w-auto"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Ny ansøgning

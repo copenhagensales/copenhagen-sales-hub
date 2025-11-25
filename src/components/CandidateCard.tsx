@@ -301,29 +301,29 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
           className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer"
           onClick={handleCardClick}
         >
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between gap-4">
+          <CardContent className="p-3 md:p-4">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
               {/* Left side - Basic info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2 md:gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate">
+                    <h3 className="font-semibold text-base md:text-lg truncate">
                       {candidate.first_name} {candidate.last_name}
                     </h3>
-                    <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 mt-1 text-xs md:text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
-                        <Mail className="h-3.5 w-3.5" />
+                        <Mail className="h-3 w-3 md:h-3.5 md:w-3.5 flex-shrink-0" />
                         <span className="truncate">{candidate.email}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5" />
+                        <Phone className="h-3 w-3 md:h-3.5 md:w-3.5 flex-shrink-0" />
                         <span>{candidate.phone}</span>
                       </div>
                     </div>
 
                     {/* Latest application info */}
                     {latestApplication && (
-                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                      <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-2 md:mt-3">
                         <Badge className={roleColors[latestApplication.role]} variant="outline">
                           {roleLabels[latestApplication.role]}
                         </Badge>
@@ -339,56 +339,56 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                   </div>
 
                   {/* Right side - Badges and actions */}
-                  <div className="flex flex-col items-end gap-2">
-                    <Badge variant="outline" className="whitespace-nowrap">
+                  <div className="flex flex-col items-end gap-1.5 md:gap-2">
+                    <Badge variant="outline" className="whitespace-nowrap text-xs">
                       <FileText className="h-3 w-3 mr-1" />
                       {applications.length}
                     </Badge>
                     {applications.length > 1 && (
                       <span className="text-xs text-amber-600 font-medium">
-                        {applications.length} ansøgninger
+                        {applications.length}
                       </span>
                     )}
                   </div>
                 </div>
 
                 {/* Quick actions */}
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-2 md:mt-3">
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={handlePhoneClick}
-                    className="h-8"
+                    className="h-7 md:h-8 text-xs"
                   >
-                    <Phone className="h-3.5 w-3.5 mr-1.5" />
-                    Ring op
+                    <Phone className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
+                    <span className="hidden sm:inline ml-1">Ring op</span>
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={handleEmailClick}
-                    className="h-8"
+                    className="h-7 md:h-8 text-xs"
                   >
-                    <Mail className="h-3.5 w-3.5 mr-1.5" />
-                    Email
+                    <Mail className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
+                    <span className="hidden sm:inline ml-1">Email</span>
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={handleProfileClick}
-                    className="h-8"
+                    className="h-7 md:h-8 text-xs"
                   >
-                    <User className="h-3.5 w-3.5 mr-1.5" />
-                    Profil
+                    <User className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
+                    <span className="hidden sm:inline ml-1">Profil</span>
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={handleDeleteClick}
-                    className="h-8 text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground"
+                    className="h-7 md:h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground"
                   >
-                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                    Slet
+                    <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
+                    <span className="hidden sm:inline ml-1">Slet</span>
                   </Button>
                   
                   {applications.length > 0 && (
@@ -396,7 +396,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                       <Button 
                         size="sm" 
                         variant="ghost"
-                        className="h-8 ml-auto"
+                        className="h-7 md:h-8 ml-auto"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <ChevronDown 

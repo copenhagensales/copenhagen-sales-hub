@@ -308,9 +308,9 @@ const Reports = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-8">
+      <div className="flex-1 overflow-auto md:pt-0 pt-16">
+        <div className="p-4 md:p-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-8 gap-4">
             <div>
               <h1 className="text-3xl font-bold mb-2">Rapporter & Analyse</h1>
               <p className="text-muted-foreground">Omfattende rekrutteringsstatistik og KPI'er</p>

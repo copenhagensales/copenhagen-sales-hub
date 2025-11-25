@@ -527,9 +527,9 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-8">
-          <div className="mb-8">
+      <div className="flex-1 overflow-auto md:pt-0 pt-16">
+        <div className="p-4 md:p-8">
+          <div className="mb-6 md:mb-8">
             <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
             <p className="text-muted-foreground">Oversigt over rekrutteringsstatus</p>
           </div>
