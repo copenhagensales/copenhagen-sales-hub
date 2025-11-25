@@ -559,6 +559,40 @@ const CandidateProfile = () => {
                     )}
                   </div>
                 </div>
+                
+                {/* Latest application details */}
+                {applications.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <h4 className="font-medium mb-3">Nuværende ansøgning</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Rolle:</span>
+                        <Badge className={roleColors[applications[0].role]}>
+                          {roleLabels[applications[0].role]}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Status:</span>
+                        <Badge className={statusColors[applications[0].status]}>
+                          {statusLabels[applications[0].status]}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Kilde:</span>
+                        <Badge variant="outline">
+                          {applications[0].source || "Ikke angivet"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Team:</span>
+                        <Badge variant="outline" className={applications[0].team_id ? "bg-primary/10 text-primary border-primary/20" : ""}>
+                          {teams.find(t => t.id === applications[0].team_id)?.name || "Ikke valgt"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {candidate.notes && (
                   <div className="pt-4 border-t">
                     <h4 className="font-medium mb-2">Generelle noter</h4>
