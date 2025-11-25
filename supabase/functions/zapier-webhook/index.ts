@@ -122,6 +122,18 @@ serve(async (req) => {
     console.log(`Candidate has ${applicationCount} existing applications`);
 
     // Create new application
+    const applicationNotes = [];
+    
+    // Add notes from Zapier webhook if provided
+    if (data.notes) {
+      applicationNotes.push(data.notes);
+    }
+    
+    // Add repeat application note if applicable
+    if (applicationCount && applicationCount > 0) {
+      applicationNotes.push(`Gentagen ansøgning (ansøgning #${applicationCount + 1})`);
+    }
+    
     const { data: newApplication, error: applicationError } = await supabase
       .from('applications')
       .insert({
@@ -132,9 +144,7 @@ serve(async (req) => {
         status: 'ny',
         cv_url: data.cv_url || null,
         cover_letter_url: data.cover_letter_url || null,
-        notes: applicationCount && applicationCount > 0 
-          ? `Gentagen ansøgning (ansøgning #${applicationCount + 1})`
-          : null,
+        notes: applicationNotes.length > 0 ? applicationNotes.join('\n\n') : null,
       })
       .select()
       .single();

@@ -39,6 +39,7 @@ interface Application {
   deadline?: string;
   next_step?: string;
   source?: string;
+  notes?: string;
 }
 
 interface CandidateCardProps {
@@ -315,6 +316,13 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
                         <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
                         <span className="font-medium">Deadline:</span>
                         <span>{format(new Date(app.deadline), "d. MMM yyyy", { locale: da })}</span>
+                      </div>
+                    )}
+
+                    {app.notes && (
+                      <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                        <span className="font-medium">Ansøgningstekst: </span>
+                        <span className="whitespace-pre-wrap">{app.notes}</span>
                       </div>
                     )}
 
