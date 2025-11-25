@@ -57,6 +57,17 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        status: {
+          new: "hsl(var(--status-new))",
+          progress: "hsl(var(--status-progress))",
+          success: "hsl(var(--status-success))",
+          rejected: "hsl(var(--status-rejected))",
+          warning: "hsl(var(--status-warning))",
+        },
+        role: {
+          fieldmarketing: "hsl(var(--role-fieldmarketing))",
+          salgskonsulent: "hsl(var(--role-salgskonsulent))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
