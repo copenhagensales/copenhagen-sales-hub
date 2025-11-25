@@ -675,18 +675,27 @@ const CandidateProfile = () => {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={async () => {
+                              onClick={async (e) => {
+                                e.stopPropagation();
                                 try {
+                                  setCurrentCallPhone(candidate.phone);
+                                  setShowCallStatus(true);
+                                  
                                   const { data, error } = await supabase.functions.invoke('call-candidate', {
                                     body: { candidatePhone: candidate.phone }
                                   });
                                   
                                   if (error) throw error;
                                   
-                                  toast.success("Twilio ringer dig op nu og forbinder til kandidaten");
+                                  if (data?.sid) {
+                                    setCurrentCallSid(data.sid);
+                                  }
+                                  
+                                  toast.success("Systemet forbinder dig med kandidaten");
                                 } catch (err: any) {
                                   console.error('Call error:', err);
                                   toast.error("Kunne ikke starte opkaldet");
+                                  setShowCallStatus(false);
                                 }
                               }}
                               className="h-8"
@@ -854,15 +863,17 @@ const CandidateProfile = () => {
         }}
       />
 
-      {showCallStatus && (
+      {showCallStatus && applications[0] && (
         <CallStatusDialog
           candidateName={`${candidate.first_name} ${candidate.last_name}`}
           candidatePhone={currentCallPhone}
           callSid={currentCallSid}
+          applicationId={applications[0].id}
           onHangup={() => {
             setShowCallStatus(false);
             setCurrentCallSid('');
             setCurrentCallPhone('');
+            fetchCandidateData(); // Refresh to show new call log
             toast.success("Opkald afsluttet");
           }}
         />
