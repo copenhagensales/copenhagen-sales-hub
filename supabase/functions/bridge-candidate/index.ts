@@ -12,23 +12,23 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const candidatePhone = url.searchParams.get('candidate');
+    const agentPhone = url.searchParams.get('agent');
 
-    if (!candidatePhone) {
+    if (!agentPhone) {
       return new Response(
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Say language="da-DK">Fejl: Intet kandidat nummer</Say></Response>',
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Say language="da-DK">Fejl: Intet agent nummer</Say></Response>',
         { status: 400, headers: { 'Content-Type': 'text/xml' } }
       );
     }
 
-    console.log(`Bridging to candidate: ${candidatePhone}`);
+    console.log(`Bridging to agent: ${agentPhone}`);
 
-    // Generate TwiML to dial the candidate
+    // Generate TwiML to dial the agent
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say language="da-DK">Forbinder til kandidat</Say>
+  <Say language="da-DK">Et øjeblik, du bliver forbundet</Say>
   <Dial>
-    <Number>${candidatePhone}</Number>
+    <Number>${agentPhone}</Number>
   </Dial>
 </Response>`;
 
