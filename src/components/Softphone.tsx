@@ -351,12 +351,49 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
     setIsMuted(!isMuted);
   };
 
-  const acceptCall = () => {
+  const acceptCall = async () => {
     twilioManager?.acceptIncomingCall();
+    
+    // Log the accepted call
+    if (incomingCallCandidate?.applicationId) {
+      try {
+        await supabase.from('communication_logs').insert({
+          application_id: incomingCallCandidate.applicationId,
+          type: 'call',
+          direction: 'inbound',
+          outcome: 'besvaret',
+          content: `Indgående opkald fra ${incomingCallCandidate.name}`,
+          created_by: userId,
+        });
+        console.log('Incoming call logged as answered');
+      } catch (error) {
+        console.error('Error logging accepted call:', error);
+      }
+    }
   };
 
-  const rejectCall = () => {
+  const rejectCall = async () => {
     twilioManager?.rejectIncomingCall();
+    
+    // Log the rejected call
+    if (incomingCallCandidate?.applicationId) {
+      try {
+        await supabase.from('communication_logs').insert({
+          application_id: incomingCallCandidate.applicationId,
+          type: 'call',
+          direction: 'inbound',
+          outcome: 'afvist',
+          content: `Indgående opkald fra ${incomingCallCandidate.name} - afvist`,
+          created_by: userId,
+        });
+        console.log('Incoming call logged as rejected');
+      } catch (error) {
+        console.error('Error logging rejected call:', error);
+      }
+    }
+    
+    // Clear incoming call state
+    setIncomingCallCandidate(null);
   };
 
   const getStatusText = () => {
