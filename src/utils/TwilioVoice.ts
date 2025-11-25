@@ -20,7 +20,8 @@ export class TwilioVoiceManager {
       [key: string]: any 
     }) => void
   ) {
-    this.identity = identity;
+    // Always use "agent" as identity for incoming calls to work
+    this.identity = "agent";
     this.onCallStatusChange = onCallStatusChange;
     this.onDebugUpdate = onDebugUpdate;
   }
@@ -67,7 +68,7 @@ export class TwilioVoiceManager {
   async initialize() {
     try {
       console.log('[Twilio] === Initializing Twilio Voice ===');
-      console.log('[Twilio] Identity:', this.identity);
+      console.log('[Twilio] Identity: agent (hardcoded for incoming calls)');
 
       // Fetch Twilio access token from edge function
       const token = await this.fetchTwilioToken();
