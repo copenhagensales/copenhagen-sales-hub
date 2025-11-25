@@ -4,8 +4,8 @@ import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Inbox, TrendingUp, AlertCircle, UserPlus, Target } from "lucide-react";
-import { startOfMonth, endOfMonth, subMonths, format, subYears, addMonths } from "date-fns";
+import { Users, Inbox, TrendingUp, AlertCircle, UserPlus, Target, Calendar } from "lucide-react";
+import { startOfMonth, endOfMonth, subMonths, format, subYears, addMonths, subDays, startOfDay } from "date-fns";
 import { da } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 
@@ -48,6 +48,11 @@ interface TeamForecast {
   monthlyChurnRate: number;
 }
 
+interface DailyApplicationData {
+  date: string;
+  count: number;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState({
     last30Days: 0,
@@ -61,12 +66,14 @@ const Dashboard = () => {
   const [conversionPeriod, setConversionPeriod] = useState<string>("6months");
   const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
   const [teamForecastData, setTeamForecastData] = useState<TeamForecast[]>([]);
+  const [dailyApplicationData, setDailyApplicationData] = useState<DailyApplicationData[]>([]);
 
   useEffect(() => {
     fetchStats();
     fetchTeamHires();
     fetchTeamHiresTrend();
     fetchForecastData();
+    fetchDailyApplications();
   }, []);
 
   useEffect(() => {
@@ -113,6 +120,49 @@ const Dashboard = () => {
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
+    }
+  };
+
+  const fetchDailyApplications = async () => {
+    try {
+      const now = new Date();
+      const thirtyDaysAgo = subDays(now, 30);
+
+      // Fetch all applications from the last 30 days
+      const { data: applications, error } = await supabase
+        .from("applications")
+        .select("application_date")
+        .gte("application_date", thirtyDaysAgo.toISOString());
+
+      if (error) throw error;
+
+      // Group applications by date
+      const dailyCounts = new Map<string, number>();
+      
+      // Initialize all days with 0
+      for (let i = 0; i < 30; i++) {
+        const date = startOfDay(subDays(now, 29 - i));
+        const dateKey = format(date, "yyyy-MM-dd");
+        dailyCounts.set(dateKey, 0);
+      }
+
+      // Count applications per day
+      applications?.forEach(app => {
+        const dateKey = format(new Date(app.application_date), "yyyy-MM-dd");
+        if (dailyCounts.has(dateKey)) {
+          dailyCounts.set(dateKey, (dailyCounts.get(dateKey) || 0) + 1);
+        }
+      });
+
+      // Convert to array and format for chart
+      const chartData: DailyApplicationData[] = Array.from(dailyCounts.entries()).map(([date, count]) => ({
+        date: format(new Date(date), "d. MMM", { locale: da }),
+        count,
+      }));
+
+      setDailyApplicationData(chartData);
+    } catch (error) {
+      console.error("Error fetching daily applications:", error);
     }
   };
 
@@ -560,6 +610,56 @@ const Dashboard = () => {
               </Card>
             ))}
           </div>
+
+          {/* Daily Applications Trend */}
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                <CardTitle>Ansøgninger modtaget de sidste 30 dage</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {dailyApplicationData.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Indlæser daglige data...</p>
+              ) : (
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dailyApplicationData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="date" 
+                        className="text-xs"
+                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <YAxis 
+                        className="text-xs"
+                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                        label={{ value: 'Antal ansøgninger', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                        formatter={(value: any) => [`${value} ansøgninger`, ""]}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="count" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <Card className="mb-6">
