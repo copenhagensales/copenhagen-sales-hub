@@ -13,7 +13,8 @@ import {
   Briefcase,
   Menu,
   X,
-  MessageSquare
+  MessageSquare,
+  CalendarCheck
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -67,6 +68,7 @@ export const Sidebar = () => {
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/candidates", icon: Users, label: "Kandidater" },
     { to: "/employees", icon: Briefcase, label: "Ansatte" },
+    { to: "/upcoming-hires", icon: CalendarCheck, label: "Kommende ansættelser" },
     { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
     { to: "/pipeline", icon: Kanban, label: "Pipeline" },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
