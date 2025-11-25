@@ -85,6 +85,22 @@ serve(async (req) => {
     console.log('Access token generated successfully');
     console.log('Token length:', jwt.length);
     console.log('Token first 50 chars:', jwt.substring(0, 50));
+    
+    // Decode token to verify structure (for debugging)
+    try {
+      const parts = jwt.split('.');
+      if (parts.length === 3) {
+        const header = JSON.parse(atob(parts[0]));
+        const payload = JSON.parse(atob(parts[1]));
+        console.log('JWT Header:', JSON.stringify(header));
+        console.log('JWT Payload iss:', payload.iss);
+        console.log('JWT Payload sub:', payload.sub);
+        console.log('JWT Payload grants:', JSON.stringify(payload.grants));
+        console.log('JWT Payload exp:', payload.exp, '(expires in', Math.floor((payload.exp * 1000 - Date.now()) / 1000 / 60), 'minutes)');
+      }
+    } catch (e) {
+      console.error('Error decoding token for debug:', e);
+    }
 
     return new Response(
       JSON.stringify({ token: jwt }),
