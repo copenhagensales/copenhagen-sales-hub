@@ -844,7 +844,7 @@ const CandidateProfile = () => {
                 </Card>
               ) : (
                 communications.map((comm) => (
-                  <Card key={comm.id}>
+                  <Card key={comm.id} className={comm.direction === 'inbound' ? 'border-l-4 border-l-primary' : ''}>
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4">
                         <div className="mt-1">
@@ -855,10 +855,13 @@ const CandidateProfile = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <Badge variant="outline" className="capitalize">
-                              {comm.type}
+                              {comm.type === "sms" ? "SMS" : comm.type}
                             </Badge>
-                            <Badge variant="outline" className="capitalize">
-                              {comm.direction === "inbound" ? "Indgående" : "Udgående"}
+                            <Badge 
+                              variant={comm.direction === "inbound" ? "default" : "outline"} 
+                              className="capitalize"
+                            >
+                              {comm.direction === "inbound" ? "📩 Indgående" : "📤 Udgående"}
                             </Badge>
                             <span className="text-sm text-muted-foreground ml-auto">
                               {format(new Date(comm.created_at), "d. MMM yyyy HH:mm", { locale: da })}
@@ -868,7 +871,7 @@ const CandidateProfile = () => {
                             Tilhører: {roleLabels[comm.application.role]} ansøgning
                           </div>
                           {comm.content && (
-                            <p className="text-sm mt-2">{comm.content}</p>
+                            <p className="text-sm mt-2 p-3 bg-muted/30 rounded border">{comm.content}</p>
                           )}
                           {comm.outcome && (
                             <div className="mt-2 text-sm">
