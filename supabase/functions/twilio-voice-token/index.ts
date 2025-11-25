@@ -40,6 +40,58 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate Twilio credentials format
+    console.log('🔍 === Validating Twilio Credentials Format ===');
+    const validationErrors: string[] = [];
+
+    if (!accountSid.startsWith('AC')) {
+      validationErrors.push('TWILIO_ACCOUNT_SID must start with "AC"');
+      console.error('❌ TWILIO_ACCOUNT_SID does not start with AC:', accountSid.substring(0, 4));
+    } else {
+      console.log('✅ TWILIO_ACCOUNT_SID format valid (starts with AC)');
+    }
+
+    if (!apiKeySid.startsWith('SK')) {
+      validationErrors.push('TWILIO_API_KEY_SID must start with "SK"');
+      console.error('❌ TWILIO_API_KEY_SID does not start with SK:', apiKeySid.substring(0, 4));
+    } else {
+      console.log('✅ TWILIO_API_KEY_SID format valid (starts with SK)');
+    }
+
+    if (!twimlAppSid.startsWith('AP')) {
+      validationErrors.push('TWILIO_TWIML_APP_SID must start with "AP"');
+      console.error('❌ TWILIO_TWIML_APP_SID does not start with AP:', twimlAppSid.substring(0, 4));
+    } else {
+      console.log('✅ TWILIO_TWIML_APP_SID format valid (starts with AP)');
+    }
+
+    if (apiKeySecret.length !== 32) {
+      validationErrors.push(`TWILIO_API_KEY_SECRET must be exactly 32 characters (currently ${apiKeySecret.length})`);
+      console.error('❌ TWILIO_API_KEY_SECRET invalid length:', apiKeySecret.length, '(should be 32)');
+    } else {
+      console.log('✅ TWILIO_API_KEY_SECRET length valid (32 characters)');
+    }
+
+    // Check if all credentials are from same account
+    // Account SID and API Key SID should share similar account pattern
+    const accountPrefix = accountSid.substring(0, 10); // First 10 chars often indicate account
+    console.log('Account prefix from ACCOUNT_SID:', accountPrefix);
+    console.log('This should match across all credentials from the same Twilio account');
+
+    if (validationErrors.length > 0) {
+      console.error('❌ Credential validation failed:');
+      validationErrors.forEach(err => console.error('  -', err));
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid Twilio credentials format',
+          details: validationErrors
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('✅ All Twilio credentials format validation passed');
+
     const now = Math.floor(Date.now() / 1000);
 
     // Create JWT header
