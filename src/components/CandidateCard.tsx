@@ -38,6 +38,7 @@ import {
 import { format, differenceInHours, differenceInDays } from "date-fns";
 import { da } from "date-fns/locale";
 import { Softphone } from "@/components/Softphone";
+import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -104,7 +105,8 @@ const roleColors: Record<string, string> = {
 export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }: CandidateCardProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [showSoftphone, setShowSoftphone] = useState(false);
+  const [showCallStatus, setShowCallStatus] = useState(false);
+  const [currentCallSid, setCurrentCallSid] = useState<string>('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showHiredDateDialog, setShowHiredDateDialog] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ applicationId: string; newStatus: string } | null>(null);
@@ -140,9 +142,27 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
     window.location.href = `mailto:${candidate.email}`;
   };
 
-  const handlePhoneClick = (e: React.MouseEvent) => {
+  const handlePhoneClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowSoftphone(true);
+    try {
+      setShowCallStatus(true);
+      
+      const { data, error } = await supabase.functions.invoke('call-candidate', {
+        body: { candidatePhone: candidate.phone }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.sid) {
+        setCurrentCallSid(data.sid);
+      }
+      
+      toast.success("Systemet forbinder dig med kandidaten");
+    } catch (err: any) {
+      console.error('Call error:', err);
+      toast.error("Kunne ikke starte opkaldet");
+      setShowCallStatus(false);
+    }
   };
 
   const handleProfileClick = (e: React.MouseEvent) => {
@@ -562,11 +582,16 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
         </Card>
       </Collapsible>
 
-      {showSoftphone && userId && (
-        <Softphone 
-          userId={userId}
-          onClose={() => setShowSoftphone(false)}
-          initialPhoneNumber={candidate.phone}
+      {showCallStatus && (
+        <CallStatusDialog
+          candidateName={`${candidate.first_name} ${candidate.last_name}`}
+          candidatePhone={candidate.phone}
+          callSid={currentCallSid}
+          onHangup={() => {
+            setShowCallStatus(false);
+            setCurrentCallSid('');
+            toast.success("Opkald afsluttet");
+          }}
         />
       )}
 

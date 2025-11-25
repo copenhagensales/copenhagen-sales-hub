@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { NewApplicationDialog } from "@/components/NewApplicationDialog";
 import { EditCandidateDialog } from "@/components/EditCandidateDialog";
 import { Softphone } from "@/components/Softphone";
+import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -105,6 +106,9 @@ const CandidateProfile = () => {
   const [showHiredDateDialog, setShowHiredDateDialog] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ applicationId: string; newStatus: string } | null>(null);
   const [hiredDate, setHiredDate] = useState<string>('');
+  const [showCallStatus, setShowCallStatus] = useState(false);
+  const [currentCallSid, setCurrentCallSid] = useState<string>('');
+  const [currentCallPhone, setCurrentCallPhone] = useState<string>('');
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -400,16 +404,24 @@ const CandidateProfile = () => {
                 variant="outline"
                 onClick={async () => {
                   try {
+                    setCurrentCallPhone(candidate.phone);
+                    setShowCallStatus(true);
+                    
                     const { data, error } = await supabase.functions.invoke('call-candidate', {
                       body: { candidatePhone: candidate.phone }
                     });
                     
                     if (error) throw error;
                     
-                    toast.success("Twilio ringer dig op nu og forbinder til kandidaten");
+                    if (data?.sid) {
+                      setCurrentCallSid(data.sid);
+                    }
+                    
+                    toast.success("Systemet forbinder dig med kandidaten");
                   } catch (err: any) {
                     console.error('Call error:', err);
                     toast.error("Kunne ikke starte opkaldet");
+                    setShowCallStatus(false);
                   }
                 }}
                 className="flex-1 md:flex-initial"
@@ -465,16 +477,24 @@ const CandidateProfile = () => {
                   <button
                     onClick={async () => {
                       try {
+                        setCurrentCallPhone(candidate.phone);
+                        setShowCallStatus(true);
+                        
                         const { data, error } = await supabase.functions.invoke('call-candidate', {
                           body: { candidatePhone: candidate.phone }
                         });
                         
                         if (error) throw error;
                         
-                        toast.success("Twilio ringer dig op nu og forbinder til kandidaten");
+                        if (data?.sid) {
+                          setCurrentCallSid(data.sid);
+                        }
+                        
+                        toast.success("Systemet forbinder dig med kandidaten");
                       } catch (err: any) {
                         console.error('Call error:', err);
                         toast.error("Kunne ikke starte opkaldet");
+                        setShowCallStatus(false);
                       }
                     }}
                     className="hover:text-primary hover:underline cursor-pointer text-left"
@@ -834,10 +854,17 @@ const CandidateProfile = () => {
         }}
       />
 
-      {showSoftphone && (
-        <Softphone
-          userId={userId}
-          onClose={() => setShowSoftphone(false)}
+      {showCallStatus && (
+        <CallStatusDialog
+          candidateName={`${candidate.first_name} ${candidate.last_name}`}
+          candidatePhone={currentCallPhone}
+          callSid={currentCallSid}
+          onHangup={() => {
+            setShowCallStatus(false);
+            setCurrentCallSid('');
+            setCurrentCallPhone('');
+            toast.success("Opkald afsluttet");
+          }}
         />
       )}
 
