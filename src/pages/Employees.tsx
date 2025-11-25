@@ -41,11 +41,8 @@ interface Employee {
 
 interface RevenueData {
   id?: string;
-  period_month: number;
-  period_year: number;
+  period: number; // 30, 60, or 90 days
   revenue: number;
-  commission?: number;
-  notes?: string;
 }
 
 interface PerformanceReview {
@@ -155,19 +152,16 @@ const Employees = () => {
     try {
       const { error } = await supabase.from("revenue_data").insert({
         application_id: employeeId,
-        period_month: data.period_month,
-        period_year: data.period_year,
+        period: data.period,
         revenue: data.revenue,
-        commission: data.commission || null,
-        notes: data.notes || null,
       });
 
       if (error) throw error;
 
-      toast.success("Omsætning tilføjet!");
+      toast.success("Dækningsbidrag tilføjet!");
       fetchEmployeeDetails(employeeId);
     } catch (error: any) {
-      toast.error("Kunne ikke tilføje omsætning");
+      toast.error("Kunne ikke tilføje dækningsbidrag");
       console.error(error);
     }
   };
@@ -343,9 +337,13 @@ const Employees = () => {
                               {emp.team.name}
                             </Badge>
                           )}
-                          {emp.employment_ended_date && (
+                          {emp.employment_ended_date ? (
                             <Badge variant="outline" className="bg-status-rejected/10 text-status-rejected border-status-rejected/20">
                               Stoppet
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-status-success/10 text-status-success border-status-success/20">
+                              Ansat
                             </Badge>
                           )}
                         </div>
@@ -370,7 +368,7 @@ const Employees = () => {
                       </div>
 
                       <div className="flex gap-2">
-                        <Button
+                          <Button
                           size="sm"
                           variant="outline"
                           onClick={() => {
@@ -380,7 +378,7 @@ const Employees = () => {
                           }}
                         >
                           <DollarSign className="h-4 w-4 mr-1" />
-                          Omsætning
+                          Dækningsbidrag
                         </Button>
                         {!emp.employment_ended_date && (
                           <Button
@@ -443,11 +441,8 @@ const RevenueDialog = ({
   onAddRevenue: (employeeId: string, data: RevenueData) => void;
 }) => {
   const [newRevenue, setNewRevenue] = useState<RevenueData>({
-    period_month: new Date().getMonth() + 1,
-    period_year: new Date().getFullYear(),
+    period: 30,
     revenue: 0,
-    commission: 0,
-    notes: "",
   });
 
   if (!employee) return null;
@@ -457,11 +452,11 @@ const RevenueDialog = ({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Omsætning & Performance - {employee.candidate.first_name}{" "}
+            Dækningsbidrag & Performance - {employee.candidate.first_name}{" "}
             {employee.candidate.last_name}
           </DialogTitle>
           <DialogDescription>
-            Administrer omsætning og se performance reviews
+            Administrer dækningsbidrag og se performance reviews
           </DialogDescription>
         </DialogHeader>
 
@@ -492,25 +487,17 @@ const RevenueDialog = ({
           {/* Existing Revenue Data */}
           {revenueData.length > 0 && (
             <div>
-              <h3 className="font-semibold mb-3">Eksisterende omsætning</h3>
+              <h3 className="font-semibold mb-3">Eksisterende dækningsbidrag</h3>
               <div className="grid gap-2">
                 {revenueData.map((rev) => (
                   <div key={rev.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div>
                       <div className="font-medium">
-                        {rev.period_month}/{rev.period_year}
+                        {rev.period} dage
                       </div>
-                      {rev.notes && (
-                        <div className="text-sm text-muted-foreground">{rev.notes}</div>
-                      )}
                     </div>
                     <div className="text-right">
                       <div className="font-semibold">{rev.revenue.toLocaleString()} kr</div>
-                      {rev.commission && (
-                        <div className="text-sm text-muted-foreground">
-                          Provision: {rev.commission.toLocaleString()} kr
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -520,68 +507,35 @@ const RevenueDialog = ({
 
           {/* Add New Revenue */}
           <div className="border-t pt-4">
-            <h3 className="font-semibold mb-3">Tilføj ny omsætning</h3>
+            <h3 className="font-semibold mb-3">Tilføj nyt dækningsbidrag</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Måned</Label>
+                <Label>Periode</Label>
                 <Select
-                  value={newRevenue.period_month.toString()}
+                  value={newRevenue.period.toString()}
                   onValueChange={(value) =>
-                    setNewRevenue({ ...newRevenue, period_month: parseInt(value) })
+                    setNewRevenue({ ...newRevenue, period: parseInt(value) })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover z-50">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                      <SelectItem key={month} value={month.toString()}>
-                        {format(new Date(2000, month - 1), "MMMM", { locale: da })}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="30">30 dage</SelectItem>
+                    <SelectItem value="60">60 dage</SelectItem>
+                    <SelectItem value="90">90 dage</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label>År</Label>
-                <Input
-                  type="number"
-                  value={newRevenue.period_year}
-                  onChange={(e) =>
-                    setNewRevenue({ ...newRevenue, period_year: parseInt(e.target.value) })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label>Omsætning (kr)</Label>
+                <Label>Dækningsbidrag (kr)</Label>
                 <Input
                   type="number"
                   value={newRevenue.revenue}
                   onChange={(e) =>
                     setNewRevenue({ ...newRevenue, revenue: parseFloat(e.target.value) || 0 })
                   }
-                />
-              </div>
-
-              <div>
-                <Label>Provision (kr)</Label>
-                <Input
-                  type="number"
-                  value={newRevenue.commission}
-                  onChange={(e) =>
-                    setNewRevenue({ ...newRevenue, commission: parseFloat(e.target.value) || 0 })
-                  }
-                />
-              </div>
-
-              <div className="col-span-2">
-                <Label>Noter</Label>
-                <Textarea
-                  value={newRevenue.notes}
-                  onChange={(e) => setNewRevenue({ ...newRevenue, notes: e.target.value })}
-                  placeholder="Valgfri noter..."
                 />
               </div>
             </div>
@@ -591,15 +545,12 @@ const RevenueDialog = ({
               onClick={() => {
                 onAddRevenue(employee.id, newRevenue);
                 setNewRevenue({
-                  period_month: new Date().getMonth() + 1,
-                  period_year: new Date().getFullYear(),
+                  period: 30,
                   revenue: 0,
-                  commission: 0,
-                  notes: "",
                 });
               }}
             >
-              Tilføj omsætning
+              Tilføj dækningsbidrag
             </Button>
           </div>
         </div>

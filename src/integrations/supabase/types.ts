@@ -246,34 +246,25 @@ export type Database = {
       revenue_data: {
         Row: {
           application_id: string
-          commission: number | null
           created_at: string
           id: string
-          notes: string | null
-          period_month: number
-          period_year: number
+          period: number | null
           revenue: number | null
           updated_at: string
         }
         Insert: {
           application_id: string
-          commission?: number | null
           created_at?: string
           id?: string
-          notes?: string | null
-          period_month: number
-          period_year: number
+          period?: number | null
           revenue?: number | null
           updated_at?: string
         }
         Update: {
           application_id?: string
-          commission?: number | null
           created_at?: string
           id?: string
-          notes?: string | null
-          period_month?: number
-          period_year?: number
+          period?: number | null
           revenue?: number | null
           updated_at?: string
         }
