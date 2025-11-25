@@ -66,21 +66,25 @@ export const CallStatusDialog = ({
     }
     
     // Log call to database if we have an applicationId
-    if (applicationId && status === 'connected') {
+    if (applicationId) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        
+        // Determine outcome based on call status
+        const outcome = status === 'connected' ? 'completed' : 'ingen kontakt';
+        const duration = status === 'connected' ? callDuration : null;
         
         await supabase.from('communication_logs').insert({
           application_id: applicationId,
           type: 'phone',
           direction: 'outbound',
-          duration: callDuration,
-          outcome: 'completed',
+          duration: duration,
+          outcome: outcome,
           content: `Opkald til ${candidatePhone}`,
           created_by: user?.id
         });
         
-        console.log('Call logged successfully');
+        console.log('Call logged successfully with outcome:', outcome);
       } catch (error) {
         console.error('Error logging call:', error);
       }
