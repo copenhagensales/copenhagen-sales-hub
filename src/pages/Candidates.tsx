@@ -120,16 +120,16 @@ const Candidates = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-8">
-          <div className="mb-8 flex items-start justify-between">
+      <div className="flex-1 overflow-auto md:pt-0 pt-16">
+        <div className="p-4 md:p-8">
+          <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Kandidater</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">Kandidater</h1>
+              <p className="text-sm md:text-base text-muted-foreground">
                 {candidatesWithApps.length} kandidater · {candidatesWithApps.reduce((sum, item) => sum + item.applications.length, 0)} ansøgninger
               </p>
             </div>
-            <Button onClick={() => setShowNewCandidateDialog(true)}>
+            <Button onClick={() => setShowNewCandidateDialog(true)} className="w-full md:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Tilføj kandidat
             </Button>
