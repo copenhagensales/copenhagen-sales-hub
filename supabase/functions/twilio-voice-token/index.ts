@@ -89,6 +89,54 @@ Deno.serve(async (req) => {
     console.log('Token length:', token.length);
     console.log('Token (first 40 chars):', token.slice(0, 40), '...');
 
+    // Decode and verify token structure (for debugging)
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.error('❌ Token does not have 3 parts!', parts.length);
+      } else {
+        console.log('✅ Token has 3 parts (header.payload.signature)');
+        
+        // Decode header and payload (not signature)
+        const decodedHeader = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
+        const decodedPayload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        
+        console.log('🔍 === Decoded JWT Header ===');
+        console.log(JSON.stringify(decodedHeader, null, 2));
+        
+        console.log('🔍 === Decoded JWT Payload ===');
+        console.log(JSON.stringify(decodedPayload, null, 2));
+        
+        // Verify critical fields
+        console.log('🔍 === Verification ===');
+        console.log('iss (should be SK...):', decodedPayload.iss, '- Matches API Key?', decodedPayload.iss === apiKeySid);
+        console.log('sub (should be AC...):', decodedPayload.sub, '- Matches Account?', decodedPayload.sub === accountSid);
+        console.log('grants.identity:', decodedPayload.grants?.identity);
+        console.log('grants.voice.outgoing.application_sid:', decodedPayload.grants?.voice?.outgoing?.application_sid);
+        console.log('grants.voice.incoming.allow:', decodedPayload.grants?.voice?.incoming?.allow);
+        console.log('iat:', decodedPayload.iat, new Date(decodedPayload.iat * 1000).toISOString());
+        console.log('exp:', decodedPayload.exp, new Date(decodedPayload.exp * 1000).toISOString());
+        console.log('Token valid for (seconds):', decodedPayload.exp - decodedPayload.iat);
+        console.log('Token expires in (minutes):', Math.floor((decodedPayload.exp * 1000 - Date.now()) / 1000 / 60));
+        
+        // Check if token is already expired
+        if (decodedPayload.exp * 1000 < Date.now()) {
+          console.error('❌ TOKEN IS ALREADY EXPIRED!');
+        } else {
+          console.log('✅ Token is not expired');
+        }
+        
+        // Verify all environment variables are from same account
+        console.log('🔍 === Environment Variable Validation ===');
+        console.log('TWILIO_ACCOUNT_SID starts with AC?', accountSid?.startsWith('AC'));
+        console.log('TWILIO_API_KEY_SID starts with SK?', apiKeySid?.startsWith('SK'));
+        console.log('TWILIO_TWIML_APP_SID starts with AP?', twimlAppSid?.startsWith('AP'));
+        console.log('TWILIO_API_KEY_SECRET length:', apiKeySecret?.length, '(should be 32)');
+      }
+    } catch (decodeError) {
+      console.error('❌ Error decoding token for verification:', decodeError);
+    }
+
     return new Response(
       JSON.stringify({ token }),
       {

@@ -100,8 +100,22 @@ export class TwilioVoiceManager {
         console.error('[Twilio] Error code:', error?.code);
         console.error('[Twilio] Error message:', error?.message);
         console.error('[Twilio] Error name:', error?.name);
+        console.error('[Twilio] Error description:', error?.description);
+        console.error('[Twilio] Error explanation:', error?.explanation);
         console.error('[Twilio] Full error object:', error);
         console.error('[Twilio] Error details:', JSON.stringify(error, null, 2));
+        
+        // Check for specific error codes
+        if (error?.code === 20101) {
+          console.error('[Twilio] ❌ AccessTokenInvalid - Token was rejected by Twilio');
+          console.error('[Twilio] This usually means:');
+          console.error('[Twilio]   1. JWT signature is invalid (wrong API Key Secret)');
+          console.error('[Twilio]   2. JWT payload structure is incorrect');
+          console.error('[Twilio]   3. Credentials are from different Twilio accounts/subaccounts');
+          console.error('[Twilio]   4. Using Test credentials mixed with Live credentials');
+        } else if (error?.code === 31204) {
+          console.error('[Twilio] ❌ JWT is invalid - Structure or format error');
+        }
         
         // Show user-friendly error alert
         const errorMsg = `Twilio error: ${error?.code || 'Unknown'} - ${error?.message || 'No message'}`;
