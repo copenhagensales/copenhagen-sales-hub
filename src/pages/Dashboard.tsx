@@ -23,9 +23,10 @@ interface TrendDataPoint {
 interface TeamConversion {
   teamId: string;
   teamName: string;
-  totalApplications: number;
-  hiredCount: number;
-  conversionRate: number;
+  totalHired: number;
+  churnedCount: number;
+  churnRate: number;
+  totalRevenue: number;
 }
 
 const Dashboard = () => {
@@ -223,39 +224,54 @@ const Dashboard = () => {
 
       if (teamsError) throw teamsError;
 
-      // Fetch all applications in the period
-      const { data: allApps, error: appsError } = await supabase
+      // Fetch all hired applications in the period
+      const { data: hiredApps, error: appsError } = await supabase
         .from("applications")
-        .select("team_id, status")
+        .select("team_id, hired_date, employment_ended_date")
+        .eq("status", "ansat")
         .not("team_id", "is", null)
-        .gte("application_date", startDate);
+        .gte("hired_date", startDate);
 
       if (appsError) throw appsError;
 
-      // Calculate conversion rates per team
-      const conversionStats: TeamConversion[] = (teams || []).map((team) => {
-        const teamApps = allApps?.filter(app => app.team_id === team.id) || [];
-        const totalApplications = teamApps.length;
-        const hiredCount = teamApps.filter(app => app.status === "ansat").length;
-        const conversionRate = totalApplications > 0 
-          ? Math.round((hiredCount / totalApplications) * 100) 
+      // Fetch revenue data
+      const { data: revenueData, error: revenueError } = await supabase
+        .from("revenue_data")
+        .select("application_id, revenue");
+
+      if (revenueError) throw revenueError;
+
+      // Calculate churn and revenue per team
+      const teamStats: TeamConversion[] = (teams || []).map((team) => {
+        const teamHires = hiredApps?.filter(app => app.team_id === team.id) || [];
+        const totalHired = teamHires.length;
+        const churnedCount = teamHires.filter(app => app.employment_ended_date !== null).length;
+        const churnRate = totalHired > 0 
+          ? Math.round((churnedCount / totalHired) * 100) 
           : 0;
+
+        // Calculate total revenue for this team's hires
+        const teamApplicationIds = teamHires.map(app => app);
+        const totalRevenue = revenueData
+          ?.filter(rev => teamHires.some(app => app.team_id === team.id))
+          .reduce((sum, rev) => sum + (Number(rev.revenue) || 0), 0) || 0;
 
         return {
           teamId: team.id,
           teamName: team.name,
-          totalApplications,
-          hiredCount,
-          conversionRate,
+          totalHired,
+          churnedCount,
+          churnRate,
+          totalRevenue: Math.round(totalRevenue),
         };
       });
 
-      // Sort by conversion rate descending
-      conversionStats.sort((a, b) => b.conversionRate - a.conversionRate);
+      // Sort by total revenue descending
+      teamStats.sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-      setConversionData(conversionStats);
+      setConversionData(teamStats);
     } catch (error) {
-      console.error("Error fetching team conversion rates:", error);
+      console.error("Error fetching team stats:", error);
     }
   };
 
@@ -319,7 +335,7 @@ const Dashboard = () => {
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-primary" />
-                <CardTitle>Team Konverteringsrater</CardTitle>
+                <CardTitle>Team Performance: Churn & Indtjening</CardTitle>
               </div>
               <Select value={conversionPeriod} onValueChange={setConversionPeriod}>
                 <SelectTrigger className="w-[180px]">
@@ -336,7 +352,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               {conversionData.length === 0 ? (
-                <p className="text-muted-foreground text-sm">Indlæser konverteringsdata...</p>
+                <p className="text-muted-foreground text-sm">Indlæser team data...</p>
               ) : (
                 <div className="space-y-6">
                   <div className="h-[300px] w-full">
@@ -351,7 +367,7 @@ const Dashboard = () => {
                         <YAxis 
                           className="text-xs"
                           tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          label={{ value: 'Konverteringsrate (%)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
+                          label={{ value: 'Indtjening (kr.)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
                         />
                         <Tooltip 
                           contentStyle={{ 
@@ -361,12 +377,12 @@ const Dashboard = () => {
                           }}
                           labelStyle={{ color: 'hsl(var(--foreground))' }}
                           formatter={(value: any, name: string) => {
-                            if (name === "conversionRate") return [`${value}%`, "Konverteringsrate"];
+                            if (name === "totalRevenue") return [`${value.toLocaleString('da-DK')} kr.`, "Indtjening"];
                             return [value, name];
                           }}
                         />
                         <Bar 
-                          dataKey="conversionRate" 
+                          dataKey="totalRevenue" 
                           fill="hsl(var(--primary))" 
                           radius={[8, 8, 0, 0]}
                         />
@@ -382,19 +398,19 @@ const Dashboard = () => {
                           <div className="flex-1">
                             <div className="font-medium">{team.teamName}</div>
                             <div className="text-sm text-muted-foreground">
-                              {team.hiredCount} ansatte af {team.totalApplications} ansøgninger
+                              {team.totalHired} ansatte • {team.churnedCount} stoppet • {team.totalRevenue.toLocaleString('da-DK')} kr. indtjening
                             </div>
                           </div>
                           <Badge 
                             className={
-                              team.conversionRate >= 15 
+                              team.churnRate <= 10 
                                 ? "bg-status-success/10 text-status-success border-status-success/20" 
-                                : team.conversionRate >= 10
+                                : team.churnRate <= 25
                                 ? "bg-status-warning/10 text-status-warning border-status-warning/20"
                                 : "bg-status-rejected/10 text-status-rejected border-status-rejected/20"
                             }
                           >
-                            {team.conversionRate}%
+                            {team.churnRate}% churn
                           </Badge>
                         </div>
                       ))}
