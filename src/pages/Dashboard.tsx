@@ -38,6 +38,16 @@ interface ForecastDataPoint {
   isHistorical: boolean;
 }
 
+interface TeamForecast {
+  teamId: string;
+  teamName: string;
+  currentActive: number;
+  projected6Months: number;
+  projected12Months: number;
+  avgHiresPerMonth: number;
+  monthlyChurnRate: number;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState({
     totalApplications: 0,
@@ -50,6 +60,7 @@ const Dashboard = () => {
   const [conversionData, setConversionData] = useState<TeamConversion[]>([]);
   const [conversionPeriod, setConversionPeriod] = useState<string>("6months");
   const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
+  const [teamForecastData, setTeamForecastData] = useState<TeamForecast[]>([]);
 
   useEffect(() => {
     fetchStats();
@@ -395,6 +406,92 @@ const Dashboard = () => {
       }
 
       setForecastData(forecast);
+
+      // Now calculate per-team forecasts
+      const { data: teams, error: teamsError } = await supabase
+        .from("teams")
+        .select("id, name")
+        .order("name");
+
+      if (teamsError) throw teamsError;
+
+      const teamForecasts: TeamForecast[] = (teams || []).map((team) => {
+        // Filter applications for this team
+        const teamApps = applications?.filter(app => app.team_id === team.id) || [];
+        const teamActiveEmployees = activeEmployees?.filter(app => app.team_id === team.id) || [];
+        
+        // Calculate team monthly metrics
+        const teamMonthlyData: { [key: string]: { applications: number; hired: number; churned: number } } = {};
+        
+        for (let i = 5; i >= 0; i--) {
+          const monthDate = subMonths(now, i);
+          const monthKey = format(monthDate, "yyyy-MM");
+          teamMonthlyData[monthKey] = { applications: 0, hired: 0, churned: 0 };
+        }
+
+        teamApps.forEach(app => {
+          const appMonthKey = format(new Date(app.application_date), "yyyy-MM");
+          if (teamMonthlyData[appMonthKey]) {
+            teamMonthlyData[appMonthKey].applications++;
+          }
+          
+          if (app.status === "ansat" && app.hired_date) {
+            const hiredMonthKey = format(new Date(app.hired_date), "yyyy-MM");
+            if (teamMonthlyData[hiredMonthKey]) {
+              teamMonthlyData[hiredMonthKey].hired++;
+            }
+          }
+          
+          if (app.employment_ended_date) {
+            const churnedMonthKey = format(new Date(app.employment_ended_date), "yyyy-MM");
+            if (teamMonthlyData[churnedMonthKey]) {
+              teamMonthlyData[churnedMonthKey].churned++;
+            }
+          }
+        });
+
+        // Calculate team-specific metrics
+        const teamMonths = Object.keys(teamMonthlyData).length;
+        const teamTotalApplications = Object.values(teamMonthlyData).reduce((sum, m) => sum + m.applications, 0);
+        const teamTotalHired = Object.values(teamMonthlyData).reduce((sum, m) => sum + m.hired, 0);
+        const teamTotalChurned = Object.values(teamMonthlyData).reduce((sum, m) => sum + m.churned, 0);
+
+        const teamAvgApplicationsPerMonth = teamTotalApplications / teamMonths;
+        const teamConversionRate = teamTotalApplications > 0 ? teamTotalHired / teamTotalApplications : 0;
+        const teamMonthlyChurnRate = teamTotalHired > 0 ? teamTotalChurned / teamTotalHired / teamMonths : 0;
+        const avgHiresPerMonth = teamAvgApplicationsPerMonth * teamConversionRate;
+
+        // Current active in team
+        const currentActive = teamActiveEmployees.length;
+
+        // Forecast 6 months
+        let projected6 = currentActive;
+        for (let i = 1; i <= 6; i++) {
+          const newHires = avgHiresPerMonth;
+          const expectedChurn = projected6 * teamMonthlyChurnRate;
+          projected6 = Math.max(0, projected6 + newHires - expectedChurn);
+        }
+
+        // Forecast 12 months
+        let projected12 = currentActive;
+        for (let i = 1; i <= 12; i++) {
+          const newHires = avgHiresPerMonth;
+          const expectedChurn = projected12 * teamMonthlyChurnRate;
+          projected12 = Math.max(0, projected12 + newHires - expectedChurn);
+        }
+
+        return {
+          teamId: team.id,
+          teamName: team.name,
+          currentActive,
+          projected6Months: Math.round(projected6),
+          projected12Months: Math.round(projected12),
+          avgHiresPerMonth: Math.round(avgHiresPerMonth * 10) / 10,
+          monthlyChurnRate: Math.round(teamMonthlyChurnRate * 1000) / 10,
+        };
+      });
+
+      setTeamForecastData(teamForecasts);
     } catch (error) {
       console.error("Error fetching forecast data:", error);
     }
@@ -767,6 +864,77 @@ const Dashboard = () => {
                       )}
                     </div>
                   </div>
+
+                  {teamForecastData.length > 0 && (
+                    <div className="mt-6 border-t pt-6">
+                      <h4 className="text-lg font-semibold mb-4">Forecast per Team</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {teamForecastData.map((team) => (
+                          <div key={team.teamId} className="p-4 rounded-lg border bg-card">
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="font-semibold text-base">{team.teamName}</h5>
+                              <Badge variant="outline">
+                                {team.avgHiresPerMonth} ansættelser/md
+                              </Badge>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Nuværende ansatte</span>
+                                <span className="font-semibold text-primary">{team.currentActive}</span>
+                              </div>
+                              
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Forventet om 6 mdr.</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold">{team.projected6Months}</span>
+                                  {team.projected6Months !== team.currentActive && (
+                                    <Badge 
+                                      variant="outline"
+                                      className={
+                                        team.projected6Months > team.currentActive 
+                                          ? "bg-status-success/10 text-status-success border-status-success/20" 
+                                          : "bg-status-rejected/10 text-status-rejected border-status-rejected/20"
+                                      }
+                                    >
+                                      {team.projected6Months > team.currentActive ? '+' : ''}
+                                      {team.projected6Months - team.currentActive}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Forventet om 12 mdr.</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold">{team.projected12Months}</span>
+                                  {team.projected12Months !== team.currentActive && (
+                                    <Badge 
+                                      variant="outline"
+                                      className={
+                                        team.projected12Months > team.currentActive 
+                                          ? "bg-status-success/10 text-status-success border-status-success/20" 
+                                          : "bg-status-rejected/10 text-status-rejected border-status-rejected/20"
+                                      }
+                                    >
+                                      {team.projected12Months > team.currentActive ? '+' : ''}
+                                      {team.projected12Months - team.currentActive}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="pt-2 border-t">
+                                <div className="text-xs text-muted-foreground">
+                                  Churn rate: {team.monthlyChurnRate}% per måned
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
