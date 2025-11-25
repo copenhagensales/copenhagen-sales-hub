@@ -439,10 +439,68 @@ const RevenueDialog = ({
   performanceReviews: PerformanceReview[];
   onAddRevenue: (employeeId: string, data: RevenueData) => void;
 }) => {
-  const [newRevenue, setNewRevenue] = useState<RevenueData>({
-    period: 30,
-    revenue: 0,
-  });
+  // Find existing revenue for each period
+  const revenue30 = revenueData.find((r) => r.period === 30);
+  const revenue60 = revenueData.find((r) => r.period === 60);
+  const revenue90 = revenueData.find((r) => r.period === 90);
+
+  const [day30Value, setDay30Value] = useState<number>(0);
+  const [day60Value, setDay60Value] = useState<number>(0);
+  const [day90Value, setDay90Value] = useState<number>(0);
+
+  // Update local state when data changes
+  useEffect(() => {
+    setDay30Value(revenue30?.revenue || 0);
+    setDay60Value(revenue60?.revenue || 0);
+    setDay90Value(revenue90?.revenue || 0);
+  }, [revenue30, revenue60, revenue90]);
+
+  const handleSave = async (period: number, value: number) => {
+    const existingRevenue = revenueData.find((r) => r.period === period);
+    
+    if (existingRevenue) {
+      // Update existing
+      const { error } = await supabase
+        .from("revenue_data")
+        .update({ revenue: value })
+        .eq("id", existingRevenue.id);
+
+      if (error) {
+        toast.error("Kunne ikke opdatere dækningsbidrag");
+        console.error(error);
+      } else {
+        toast.success("Dækningsbidrag opdateret!");
+        onAddRevenue(employee!.id, { period, revenue: value }); // Trigger refresh
+      }
+    } else {
+      // Insert new
+      onAddRevenue(employee!.id, { period, revenue: value });
+    }
+  };
+
+  const handleDelete = async (period: number) => {
+    const existingRevenue = revenueData.find((r) => r.period === period);
+    
+    if (existingRevenue) {
+      const { error } = await supabase
+        .from("revenue_data")
+        .delete()
+        .eq("id", existingRevenue.id);
+
+      if (error) {
+        toast.error("Kunne ikke slette dækningsbidrag");
+        console.error(error);
+      } else {
+        toast.success("Dækningsbidrag slettet!");
+        onAddRevenue(employee!.id, { period, revenue: 0 }); // Trigger refresh
+        
+        // Reset local state
+        if (period === 30) setDay30Value(0);
+        if (period === 60) setDay60Value(0);
+        if (period === 90) setDay90Value(0);
+      }
+    }
+  };
 
   if (!employee) return null;
 
@@ -483,74 +541,97 @@ const RevenueDialog = ({
             </div>
           )}
 
-          {/* Existing Revenue Data */}
-          {revenueData.length > 0 && (
-            <div>
-              <h3 className="font-semibold mb-3">Eksisterende dækningsbidrag</h3>
-              <div className="grid gap-2">
-                {revenueData.map((rev) => (
-                  <div key={rev.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <div className="font-medium">
-                        {rev.period} dage
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">{rev.revenue.toLocaleString()} kr</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Add New Revenue */}
-          <div className="border-t pt-4">
-            <h3 className="font-semibold mb-3">Tilføj nyt dækningsbidrag</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Periode</Label>
-                <Select
-                  value={newRevenue.period.toString()}
-                  onValueChange={(value) =>
-                    setNewRevenue({ ...newRevenue, period: parseInt(value) })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover z-50">
-                    <SelectItem value="30">30 dage</SelectItem>
-                    <SelectItem value="60">60 dage</SelectItem>
-                    <SelectItem value="90">90 dage</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Dækningsbidrag (kr)</Label>
+          {/* Revenue Entry Fields */}
+          <div>
+            <h3 className="font-semibold mb-3">Dækningsbidrag</h3>
+            <div className="grid gap-4">
+              {/* 30 days */}
+              <div className="flex items-center gap-3">
+                <Label className="w-24">30 dage</Label>
                 <Input
                   type="number"
-                  value={newRevenue.revenue}
-                  onChange={(e) =>
-                    setNewRevenue({ ...newRevenue, revenue: parseFloat(e.target.value) || 0 })
-                  }
+                  value={day30Value}
+                  onChange={(e) => setDay30Value(parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
+                <span className="text-sm text-muted-foreground">kr</span>
+                <Button
+                  size="sm"
+                  onClick={() => handleSave(30, day30Value)}
+                  disabled={day30Value === (revenue30?.revenue || 0)}
+                >
+                  Gem
+                </Button>
+                {revenue30 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDelete(30)}
+                  >
+                    Slet
+                  </Button>
+                )}
+              </div>
+
+              {/* 60 days */}
+              <div className="flex items-center gap-3">
+                <Label className="w-24">60 dage</Label>
+                <Input
+                  type="number"
+                  value={day60Value}
+                  onChange={(e) => setDay60Value(parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="text-sm text-muted-foreground">kr</span>
+                <Button
+                  size="sm"
+                  onClick={() => handleSave(60, day60Value)}
+                  disabled={day60Value === (revenue60?.revenue || 0)}
+                >
+                  Gem
+                </Button>
+                {revenue60 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDelete(60)}
+                  >
+                    Slet
+                  </Button>
+                )}
+              </div>
+
+              {/* 90 days */}
+              <div className="flex items-center gap-3">
+                <Label className="w-24">90 dage</Label>
+                <Input
+                  type="number"
+                  value={day90Value}
+                  onChange={(e) => setDay90Value(parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="text-sm text-muted-foreground">kr</span>
+                <Button
+                  size="sm"
+                  onClick={() => handleSave(90, day90Value)}
+                  disabled={day90Value === (revenue90?.revenue || 0)}
+                >
+                  Gem
+                </Button>
+                {revenue90 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDelete(90)}
+                  >
+                    Slet
+                  </Button>
+                )}
               </div>
             </div>
-
-            <Button
-              className="mt-4 w-full"
-              onClick={() => {
-                onAddRevenue(employee.id, newRevenue);
-                setNewRevenue({
-                  period: 30,
-                  revenue: 0,
-                });
-              }}
-            >
-              Tilføj dækningsbidrag
-            </Button>
           </div>
         </div>
       </DialogContent>
