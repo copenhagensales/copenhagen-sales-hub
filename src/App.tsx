@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
 import Candidates from "./pages/Candidates";
 import CandidateProfile from "./pages/CandidateProfile";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,7 +76,7 @@ const App = () => {
             />
             <Route
               path="/reports"
-              element={session ? <Dashboard /> : <Navigate to="/auth" replace />}
+              element={session ? <Reports /> : <Navigate to="/auth" replace />}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
