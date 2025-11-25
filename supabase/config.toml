@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.bridge-candidate]
 verify_jwt = false
+
+[functions.zapier-webhook]
+verify_jwt = false
