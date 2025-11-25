@@ -45,6 +45,10 @@ interface Application {
   next_step?: string;
   notes?: string;
   rejection_reason?: string;
+  team_id?: string;
+  hired_date?: string;
+  employment_ended_date?: string;
+  employment_end_reason?: string;
 }
 
 interface Communication {
@@ -79,6 +83,7 @@ const CandidateProfile = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [performanceReviews, setPerformanceReviews] = useState<PerformanceReview[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewApplicationDialog, setShowNewApplicationDialog] = useState(false);
 
@@ -99,6 +104,15 @@ const CandidateProfile = () => {
 
       if (candidateError) throw candidateError;
       setCandidate(candidateData);
+
+      // Fetch teams
+      const { data: teamsData, error: teamsError } = await supabase
+        .from("teams")
+        .select("*")
+        .order("name");
+
+      if (teamsError) throw teamsError;
+      setTeams(teamsData || []);
 
       // Fetch applications
       const { data: applicationsData, error: appsError } = await supabase
@@ -231,6 +245,23 @@ const CandidateProfile = () => {
       fetchCandidateData();
     } catch (error: any) {
       toast.error("Kunne ikke opdatere kilde");
+      console.error(error);
+    }
+  };
+
+  const handleTeamChange = async (applicationId: string, newTeamId: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ team_id: newTeamId || null })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Team opdateret!");
+      fetchCandidateData();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere team");
       console.error(error);
     }
   };
@@ -462,6 +493,33 @@ const CandidateProfile = () => {
                               </Select>
                             </div>
                           </div>
+
+                          {/* Team selector for hired candidates */}
+                          {app.status === "ansat" && (
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm text-muted-foreground">Team:</span>
+                              <Select
+                                value={app.team_id || "none"}
+                                onValueChange={(value) => handleTeamChange(app.id, value === "none" ? "" : value)}
+                              >
+                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                  <SelectValue>
+                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                      {teams.find(t => t.id === app.team_id)?.name || "Vælg team"}
+                                    </Badge>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover">
+                                  <SelectItem value="none">Intet team</SelectItem>
+                                  {teams.map(team => (
+                                    <SelectItem key={team.id} value={team.id}>
+                                      {team.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                           <div className="text-sm text-muted-foreground">
                             {format(new Date(app.application_date), "d. MMMM yyyy 'kl.' HH:mm", { locale: da })}
                           </div>

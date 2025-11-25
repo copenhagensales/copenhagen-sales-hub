@@ -29,6 +29,17 @@ interface RoleStats {
   avgPerformance: number;
 }
 
+interface TeamStats {
+  teamId: string;
+  teamName: string;
+  totalEmployees: number;
+  activeEmployees: number;
+  churnedEmployees: number;
+  churnRate: number;
+  totalRevenue: number;
+  avgRevenuePerEmployee: number;
+}
+
 const Reports = () => {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
@@ -43,6 +54,7 @@ const Reports = () => {
   const [sourceStats, setSourceStats] = useState<SourceStats[]>([]);
   const [statusStats, setStatusStats] = useState<StatusStats[]>([]);
   const [roleStats, setRoleStats] = useState<RoleStats[]>([]);
+  const [teamStats, setTeamStats] = useState<TeamStats[]>([]);
   const [performanceStats, setPerformanceStats] = useState<any[]>([]);
 
   useEffect(() => {
@@ -178,6 +190,84 @@ const Reports = () => {
 
       setPerformanceStats(performanceDistribution);
 
+      // Calculate team statistics
+      const { data: teams } = await supabase.from("teams").select("*");
+      
+      const { data: revenueData } = await supabase
+        .from("revenue_data")
+        .select(`
+          *,
+          application:applications(team_id, employment_ended_date)
+        `);
+
+      const teamMap = new Map<string, {
+        totalEmployees: number;
+        activeEmployees: number;
+        churnedEmployees: number;
+        totalRevenue: number;
+      }>();
+
+      // Initialize team stats
+      teams?.forEach(team => {
+        teamMap.set(team.id, {
+          totalEmployees: 0,
+          activeEmployees: 0,
+          churnedEmployees: 0,
+          totalRevenue: 0,
+        });
+      });
+
+      // Count employees per team
+      applications?.forEach(app => {
+        if (app.status === "ansat" && app.team_id) {
+          const stats = teamMap.get(app.team_id);
+          if (stats) {
+            stats.totalEmployees++;
+            if (app.employment_ended_date) {
+              stats.churnedEmployees++;
+            } else {
+              stats.activeEmployees++;
+            }
+          }
+        }
+      });
+
+      // Calculate revenue per team
+      revenueData?.forEach(rev => {
+        if (rev.application?.team_id && rev.revenue) {
+          const stats = teamMap.get(rev.application.team_id);
+          if (stats) {
+            stats.totalRevenue += parseFloat(rev.revenue.toString());
+          }
+        }
+      });
+
+      const teamStatsData: TeamStats[] = teams?.map(team => {
+        const stats = teamMap.get(team.id) || {
+          totalEmployees: 0,
+          activeEmployees: 0,
+          churnedEmployees: 0,
+          totalRevenue: 0,
+        };
+
+        return {
+          teamId: team.id,
+          teamName: team.name,
+          totalEmployees: stats.totalEmployees,
+          activeEmployees: stats.activeEmployees,
+          churnedEmployees: stats.churnedEmployees,
+          churnRate: stats.totalEmployees > 0 
+            ? (stats.churnedEmployees / stats.totalEmployees) * 100 
+            : 0,
+          totalRevenue: stats.totalRevenue,
+          avgRevenuePerEmployee: stats.totalEmployees > 0 
+            ? stats.totalRevenue / stats.totalEmployees 
+            : 0,
+        };
+      }) || [];
+
+      setTeamStats(teamStatsData);
+
     } catch (error: any) {
       toast.error("Kunne ikke hente rapportdata");
       console.error(error);
@@ -295,11 +385,12 @@ const Reports = () => {
             </Card>
           </div>
 
-          <Tabs defaultValue="sources" className="space-y-6">
+            <Tabs defaultValue="sources" className="space-y-6">
             <TabsList>
               <TabsTrigger value="sources">Kilder</TabsTrigger>
               <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
               <TabsTrigger value="roles">Roller</TabsTrigger>
+              <TabsTrigger value="teams">Teams</TabsTrigger>
               <TabsTrigger value="performance">Performance</TabsTrigger>
             </TabsList>
 
@@ -474,6 +565,161 @@ const Reports = () => {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            <TabsContent value="teams" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Indtjening pr. Team</CardTitle>
+                    <CardDescription>Total omsætning og gennemsnit pr. medarbejder</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={teamStats}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="teamName" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value: number) => `${value.toLocaleString('da-DK')} kr.`}
+                        />
+                        <Legend />
+                        <Bar dataKey="totalRevenue" fill="#10b981" name="Total Indtjening (kr.)" />
+                        <Bar dataKey="avgRevenuePerEmployee" fill="#3b82f6" name="Gns. pr. Medarbejder (kr.)" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Churn Rate pr. Team</CardTitle>
+                    <CardDescription>Medarbejderfrafald fordelt på teams</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {teamStats.map((team, index) => (
+                        <div key={index} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{team.teamName}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">
+                                {team.churnedEmployees}/{team.totalEmployees}
+                              </span>
+                              <Badge 
+                                variant="outline"
+                                className={team.churnRate > 20 ? "bg-status-rejected/10 text-status-rejected" : ""}
+                              >
+                                {team.churnRate.toFixed(1)}%
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full transition-all ${
+                                team.churnRate > 20 ? "bg-status-rejected" : "bg-status-warning"
+                              }`}
+                              style={{ width: `${Math.min(team.churnRate, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Team Oversigt</CardTitle>
+                    <CardDescription>Detaljeret statistik pr. team</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {teamStats.map((team, index) => (
+                        <div key={index} className="p-4 bg-muted/50 rounded-lg space-y-3">
+                          <h4 className="font-semibold text-lg">{team.teamName}</h4>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Aktive Medarbejdere</p>
+                              <p className="text-xl font-bold text-status-success">{team.activeEmployees}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Stoppet</p>
+                              <p className="text-xl font-bold text-status-rejected">{team.churnedEmployees}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Total Indtjening</p>
+                              <p className="text-lg font-bold">{team.totalRevenue.toLocaleString('da-DK')} kr.</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Gns. pr. Person</p>
+                              <p className="text-lg font-bold">{Math.round(team.avgRevenuePerEmployee).toLocaleString('da-DK')} kr.</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="text-xs text-muted-foreground">Churn Rate</p>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-muted rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full ${
+                                      team.churnRate > 20 ? "bg-status-rejected" : "bg-status-warning"
+                                    }`}
+                                    style={{ width: `${Math.min(team.churnRate, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm font-medium">{team.churnRate.toFixed(1)}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {teamStats.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Ingen team-data tilgængelig endnu
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Samlet oversigt */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Samlet Oversigt</CardTitle>
+                  <CardDescription>Aggregeret data på tværs af alle teams</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="text-center p-4 bg-primary/5 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-2">Total Aktive</p>
+                      <p className="text-3xl font-bold text-primary">
+                        {teamStats.reduce((sum, t) => sum + t.activeEmployees, 0)}
+                      </p>
+                    </div>
+                    <div className="text-center p-4 bg-status-rejected/5 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-2">Total Churn</p>
+                      <p className="text-3xl font-bold text-status-rejected">
+                        {teamStats.reduce((sum, t) => sum + t.churnedEmployees, 0)}
+                      </p>
+                    </div>
+                    <div className="text-center p-4 bg-status-success/5 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-2">Total Indtjening</p>
+                      <p className="text-3xl font-bold text-status-success">
+                        {teamStats.reduce((sum, t) => sum + t.totalRevenue, 0).toLocaleString('da-DK')} kr.
+                      </p>
+                    </div>
+                    <div className="text-center p-4 bg-status-warning/5 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-2">Gns. Churn Rate</p>
+                      <p className="text-3xl font-bold text-status-warning">
+                        {teamStats.length > 0 
+                          ? (teamStats.reduce((sum, t) => sum + t.churnRate, 0) / teamStats.length).toFixed(1)
+                          : 0}%
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="performance" className="space-y-6">
