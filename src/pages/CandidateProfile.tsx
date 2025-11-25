@@ -558,6 +558,48 @@ const CandidateProfile = () => {
                     </div>
                   </>
                 )}
+                
+                <Separator />
+                
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Kommunikationsstatistik</h4>
+                  <div className="space-y-3">
+                    {(() => {
+                      const phoneCalls = communications.filter(c => c.type === 'phone');
+                      const emails = communications.filter(c => c.type === 'email');
+                      const smsMessages = communications.filter(c => c.type === 'sms');
+                      
+                      const totalCalls = phoneCalls.length;
+                      const totalEmails = emails.length;
+                      const totalSms = smsMessages.length;
+
+                      if (totalCalls === 0 && totalEmails === 0 && totalSms === 0) {
+                        return (
+                          <div className="text-sm text-muted-foreground text-center py-2">
+                            Ingen kommunikation registreret
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Opkald</span>
+                            <Badge variant="outline">{totalCalls}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Emails</span>
+                            <Badge variant="outline">{totalEmails}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">SMS</span>
+                            <Badge variant="outline">{totalSms}</Badge>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
