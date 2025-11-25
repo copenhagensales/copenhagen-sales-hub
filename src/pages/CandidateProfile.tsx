@@ -74,6 +74,7 @@ interface Communication {
   outcome?: string;
   duration?: number;
   created_at: string;
+  application_id: string;
   application: {
     role: string;
     application_date: string;
@@ -882,6 +883,21 @@ const CandidateProfile = () => {
                             <div className="text-sm text-muted-foreground">
                               Varighed: {Math.floor(comm.duration / 60)} min {comm.duration % 60} sek
                             </div>
+                          )}
+                          {/* Reply button for inbound SMS */}
+                          {comm.type === "sms" && comm.direction === "inbound" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSmsApplicationId(comm.application_id);
+                                setShowSmsDialog(true);
+                              }}
+                              className="mt-3"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                              Svar på SMS
+                            </Button>
                           )}
                         </div>
                       </div>
