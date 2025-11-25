@@ -11,10 +11,11 @@ import { Call } from '@twilio/voice-sdk';
 interface SoftphoneProps {
   userId: string;
   onClose: () => void;
+  initialPhoneNumber?: string;
 }
 
-export const Softphone = ({ userId, onClose }: SoftphoneProps) => {
-  const [phoneNumber, setPhoneNumber] = useState('');
+export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProps) => {
+  const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber || '');
   const [callStatus, setCallStatus] = useState<string>('initializing');
   const [isMuted, setIsMuted] = useState(false);
   const [twilioManager, setTwilioManager] = useState<TwilioVoiceManager | null>(null);

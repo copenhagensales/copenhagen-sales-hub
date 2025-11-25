@@ -370,6 +370,7 @@ const CandidateProfile = () => {
           {showSoftphone && userId && (
             <Softphone
               userId={userId}
+              initialPhoneNumber={candidate.phone}
               onClose={() => setShowSoftphone(false)}
             />
           )}
