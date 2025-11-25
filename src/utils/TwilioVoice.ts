@@ -1,5 +1,4 @@
 import { Device, Call } from '@twilio/voice-sdk';
-import { supabase } from '@/integrations/supabase/client';
 
 export class TwilioVoiceManager {
   private device: Device | null = null;
@@ -12,77 +11,49 @@ export class TwilioVoiceManager {
     this.onCallStatusChange = onCallStatusChange;
   }
 
+  private async fetchTwilioToken(): Promise<string> {
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-token`;
+    
+    console.log('📞 Fetching Twilio token from:', functionUrl);
+
+    const res = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('📡 Token endpoint response status:', res.status);
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('❌ Twilio token endpoint failed:', res.status, text);
+      throw new Error(`Token endpoint failed: ${res.status} - ${text}`);
+    }
+
+    const data = await res.json();
+    console.log('📦 Token endpoint response:', data);
+
+    if (!data.token || typeof data.token !== 'string') {
+      console.error('❌ Token endpoint returned no token:', data);
+      throw new Error('Token endpoint returned no token');
+    }
+
+    return data.token;
+  }
+
   async initialize() {
     try {
       console.log('=== Initializing Twilio Voice ===');
       console.log('Identity:', this.identity);
 
-      // Get access token from edge function with detailed error handling
-      console.log('Requesting access token from edge function...');
-      console.log('Function name: twilio-voice-token');
-      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-      
-      const { data, error } = await supabase.functions.invoke('twilio-voice-token', {
-        body: { identity: this.identity }
-      });
+      // Fetch Twilio access token from edge function
+      const token = await this.fetchTwilioToken();
+      console.log('✅ Got Twilio token (first 40 chars):', token.slice(0, 40), '...');
 
-      console.log('=== Token Endpoint Response ===');
-      console.log('Data:', data);
-      console.log('Error:', error);
-      console.log('Error type:', error?.constructor?.name);
-      console.log('Error message:', error?.message);
-      console.log('Error context:', error?.context);
-      console.log('Full error object:', JSON.stringify(error, null, 2));
-
-      if (error) {
-        console.error('❌ Error from token endpoint:');
-        console.error('  Name:', error.name);
-        console.error('  Message:', error.message);
-        console.error('  Context:', error.context);
-        console.error('  Full error:', error);
-        
-        // Try to get more details about the error
-        if (error.context) {
-          console.error('  Error context details:', JSON.stringify(error.context, null, 2));
-        }
-        
-        throw new Error(`Token endpoint error: ${error.name || 'Unknown'} - ${error.message || 'No message'} - Context: ${JSON.stringify(error.context || {})}`);
-      }
-      
-      if (!data?.token) {
-        console.error('❌ No token in response');
-        console.error('  Full response data:', JSON.stringify(data, null, 2));
-        throw new Error(`No token received. Response: ${JSON.stringify(data)}`);
-      }
-
-      console.log('Access token received, length:', data.token.length);
-      console.log('Token first 50 chars:', data.token.substring(0, 50));
-      
-      // Decode token to verify structure (for debugging)
-      try {
-        const parts = data.token.split('.');
-        if (parts.length === 3) {
-          const header = JSON.parse(atob(parts[0]));
-          const payload = JSON.parse(atob(parts[1]));
-          console.log('🔍 JWT Header:', header);
-          console.log('🔍 JWT Payload iss (should start with SK):', payload.iss);
-          console.log('🔍 JWT Payload sub (should start with AC):', payload.sub);
-          console.log('🔍 JWT Payload grants:', payload.grants);
-          console.log('🔍 JWT Payload exp:', new Date(payload.exp * 1000).toISOString());
-          console.log('🔍 Current time:', new Date().toISOString());
-        }
-      } catch (e) {
-        console.error('❌ Error decoding token:', e);
-      }
-
-      // Verify we're passing a string, not an object
-      const tokenString = typeof data.token === 'string' ? data.token : JSON.stringify(data.token);
-      console.log('🔧 Token being passed to Twilio.Device (type):', typeof tokenString);
-      console.log('🔧 Is pure string?:', typeof tokenString === 'string');
-
-      // Initialize device
+      // Initialize Twilio Device
       console.log('🔧 Initializing Twilio Device with token...');
-      this.device = new Device(tokenString, {
+      this.device = new Device(token, {
         logLevel: 1,
         codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
       });

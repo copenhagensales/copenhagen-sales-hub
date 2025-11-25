@@ -1,103 +1,80 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { encodeBase64Url } from "https://deno.land/std@0.224.0/encoding/base64url.ts";
+import { create } from "https://deno.land/x/djwt@v2.9/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Only accept POST
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
-    const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const TWILIO_API_KEY_SID = Deno.env.get('TWILIO_API_KEY_SID');
-    const TWILIO_API_KEY_SECRET = Deno.env.get('TWILIO_API_KEY_SECRET');
-    const TWILIO_TWIML_APP_SID = Deno.env.get('TWILIO_TWIML_APP_SID');
+    // Get Twilio environment variables
+    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+    const apiKeySid = Deno.env.get('TWILIO_API_KEY_SID');
+    const apiKeySecret = Deno.env.get('TWILIO_API_KEY_SECRET');
+    const twimlAppSid = Deno.env.get('TWILIO_TWIML_APP_SID');
 
-    console.log('=== Environment Variables Check ===');
-    console.log('TWILIO_ACCOUNT_SID:', TWILIO_ACCOUNT_SID ? 'SET' : 'MISSING');
-    console.log('TWILIO_API_KEY_SID:', TWILIO_API_KEY_SID ? 'SET' : 'MISSING');
-    console.log('TWILIO_API_KEY_SECRET:', TWILIO_API_KEY_SECRET ? 'SET (length: ' + (TWILIO_API_KEY_SECRET?.length || 0) + ')' : 'MISSING');
-    console.log('TWILIO_TWIML_APP_SID:', TWILIO_TWIML_APP_SID ? 'SET' : 'MISSING');
+    console.log('=== Twilio Token Generation ===');
+    console.log('TWILIO_ACCOUNT_SID:', accountSid ? 'SET' : 'MISSING');
+    console.log('TWILIO_API_KEY_SID:', apiKeySid ? 'SET' : 'MISSING');
+    console.log('TWILIO_API_KEY_SECRET:', apiKeySecret ? 'SET' : 'MISSING');
+    console.log('TWILIO_TWIML_APP_SID:', twimlAppSid ? 'SET' : 'MISSING');
 
-    const missingVars = [];
-    if (!TWILIO_ACCOUNT_SID) missingVars.push('TWILIO_ACCOUNT_SID');
-    if (!TWILIO_API_KEY_SID) missingVars.push('TWILIO_API_KEY_SID');
-    if (!TWILIO_API_KEY_SECRET) missingVars.push('TWILIO_API_KEY_SECRET');
-    if (!TWILIO_TWIML_APP_SID) missingVars.push('TWILIO_TWIML_APP_SID');
-
-    if (missingVars.length > 0) {
-      const errorMsg = `Missing environment variables: ${missingVars.join(', ')}`;
-      console.error(errorMsg);
+    if (!accountSid || !apiKeySid || !apiKeySecret || !twimlAppSid) {
+      console.error('Missing Twilio environment variables');
       return new Response(
-        JSON.stringify({ 
-          error: errorMsg,
-          missingVariables: missingVars,
-          details: 'Please configure all required Twilio environment variables'
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        JSON.stringify({ error: 'Missing Twilio environment variables' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get user identity from request
-    const { identity } = await req.json();
-    if (!identity) {
-      return new Response(
-        JSON.stringify({ error: 'Identity is required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    console.log('Generating access token for identity:', identity);
-
-    // Create JWT token manually with exact Twilio format
     const now = Math.floor(Date.now() / 1000);
-    const exp = now + 3600; // 1 hour
 
-    // JWT Header
+    // Create JWT header
     const header = {
-      cty: 'twilio-fpa;v=1',
-      typ: 'JWT',
-      alg: 'HS256'
+      alg: "HS256" as const,
+      typ: "JWT",
     };
 
-    // JWT Payload with exact Twilio structure
+    // Create JWT payload with Twilio grants
     const payload = {
-      jti: `${TWILIO_API_KEY_SID!}-${now}`,
-      iss: TWILIO_API_KEY_SID!,
-      sub: TWILIO_ACCOUNT_SID!,
-      exp: exp,
+      jti: `${apiKeySid}-${now}`,
+      iss: apiKeySid,        // SK...
+      sub: accountSid,       // AC...
+      iat: now,
+      nbf: now,
+      exp: now + 60 * 60,    // 1 hour
       grants: {
-        identity: identity,
+        identity: "agent-" + crypto.randomUUID(),
         voice: {
-          incoming: {
-            allow: true
-          },
           outgoing: {
-            application_sid: TWILIO_TWIML_APP_SID!
-          }
-        }
-      }
+            application_sid: twimlAppSid,
+          },
+          incoming: {
+            allow: true,
+          },
+        },
+      },
     };
 
-    // Encode header and payload
-    const encoder = new TextEncoder();
-    const headerB64 = encodeBase64Url(encoder.encode(JSON.stringify(header)));
-    const payloadB64 = encodeBase64Url(encoder.encode(JSON.stringify(payload)));
-    const signatureInput = `${headerB64}.${payloadB64}`;
+    console.log('Generating JWT token with identity:', payload.grants.identity);
 
-    // Create HMAC signature
-    const keyData = encoder.encode(TWILIO_API_KEY_SECRET!);
-    const key = await crypto.subtle.importKey(
+    // Convert secret to CryptoKey for djwt
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(apiKeySecret);
+    const cryptoKey = await crypto.subtle.importKey(
       'raw',
       keyData,
       { name: 'HMAC', hash: 'SHA-256' },
@@ -105,53 +82,32 @@ serve(async (req) => {
       ['sign']
     );
 
-    const signatureData = encoder.encode(signatureInput);
-    const signature = await crypto.subtle.sign('HMAC', key, signatureData);
-    const signatureB64 = encodeBase64Url(new Uint8Array(signature));
+    // Create JWT using djwt
+    const token = await create(header, payload, cryptoKey);
 
-    const jwt = `${signatureInput}.${signatureB64}`;
-
-    console.log('Access token generated successfully');
-    console.log('Token length:', jwt.length);
-    console.log('Token first 50 chars:', jwt.substring(0, 50));
-    
-    // Decode token to verify structure (for debugging)
-    try {
-      const parts = jwt.split('.');
-      if (parts.length === 3) {
-        const decodedHeader = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
-        const decodedPayload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
-        console.log('🔍 JWT Header:', JSON.stringify(decodedHeader));
-        console.log('🔍 JWT Payload iss (should start with SK):', decodedPayload.iss);
-        console.log('🔍 JWT Payload sub (should start with AC):', decodedPayload.sub);
-        console.log('🔍 JWT Payload grants:', JSON.stringify(decodedPayload.grants));
-        console.log('🔍 JWT Payload exp:', decodedPayload.exp, '(expires in', Math.floor((decodedPayload.exp * 1000 - Date.now()) / 1000 / 60), 'minutes)');
-      }
-    } catch (e) {
-      console.error('❌ Error decoding token for debug:', e);
-    }
+    console.log('✅ Token generated successfully');
+    console.log('Token length:', token.length);
+    console.log('Token (first 40 chars):', token.slice(0, 40), '...');
 
     return new Response(
-      JSON.stringify({ token: jwt }),
+      JSON.stringify({ token }),
       {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
+
   } catch (error) {
-    console.error('=== ERROR generating access token ===');
+    console.error('❌ Error generating token:');
     console.error('Error type:', error?.constructor?.name);
     console.error('Error message:', error instanceof Error ? error.message : String(error));
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorDetails = {
-      error: errorMessage,
-      type: error?.constructor?.name || 'UnknownError',
-      timestamp: new Date().toISOString()
-    };
 
     return new Response(
-      JSON.stringify(errorDetails),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        type: error?.constructor?.name || 'UnknownError',
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
