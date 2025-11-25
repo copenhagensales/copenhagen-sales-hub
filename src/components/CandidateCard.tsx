@@ -4,6 +4,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Mail, 
   Phone, 
@@ -12,12 +22,14 @@ import {
   ChevronDown, 
   User,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from "lucide-react";
 import { format, differenceInHours, differenceInDays } from "date-fns";
 import { da } from "date-fns/locale";
 import { Softphone } from "@/components/Softphone";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Application {
   id: string;
@@ -78,6 +90,7 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showSoftphone, setShowSoftphone] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
@@ -119,10 +132,39 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
     navigate(`/candidates/${candidate.id}`);
   };
 
+  const handleCardClick = () => {
+    navigate(`/candidates/${candidate.id}`);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      const { error } = await supabase
+        .from("candidates")
+        .delete()
+        .eq("id", candidate.id);
+
+      if (error) throw error;
+
+      toast.success("Kandidat slettet");
+      window.location.reload();
+    } catch (error: any) {
+      toast.error("Kunne ikke slette kandidat");
+      console.error(error);
+    }
+  };
+
   return (
     <>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50">
+        <Card 
+          className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer"
+          onClick={handleCardClick}
+        >
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-4">
               {/* Left side - Basic info */}
@@ -203,6 +245,15 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
                     <User className="h-3.5 w-3.5 mr-1.5" />
                     Profil
                   </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleDeleteClick}
+                    className="h-8 text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Slet
+                  </Button>
                   
                   {applications.length > 0 && (
                     <CollapsibleTrigger asChild>
@@ -210,6 +261,7 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
                         size="sm" 
                         variant="ghost"
                         className="h-8 ml-auto"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <ChevronDown 
                           className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} 
@@ -286,6 +338,27 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
           initialPhoneNumber={candidate.phone}
         />
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slet kandidat</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil slette {candidate.first_name} {candidate.last_name}? 
+              Dette vil også slette alle tilknyttede ansøgninger. Denne handling kan ikke fortrydes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuller</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Slet
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
