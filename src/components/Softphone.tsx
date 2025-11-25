@@ -26,7 +26,11 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
   useEffect(() => {
     const initializeTwilio = async () => {
       try {
+        console.log('=== Starting Softphone Initialization ===');
+        console.log('User ID:', userId);
+        
         const manager = new TwilioVoiceManager(userId, (status, call) => {
+          console.log('Call status changed:', status);
           setCallStatus(status);
           if (call) {
             setCurrentCall(call);
@@ -39,13 +43,20 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
           }
         });
 
+        console.log('Calling manager.initialize()...');
         await manager.initialize();
+        console.log('Manager initialized successfully');
         setTwilioManager(manager);
       } catch (error) {
-        console.error('Error initializing Twilio:', error);
+        console.error('=== Error Initializing Softphone ===');
+        console.error('Error type:', error?.constructor?.name);
+        console.error('Error message:', error instanceof Error ? error.message : String(error));
+        console.error('Full error:', error);
+        
+        const errorMsg = error instanceof Error ? error.message : 'Ukendt fejl';
         toast({
           title: 'Fejl',
-          description: 'Kunne ikke initialisere telefon',
+          description: `Kunne ikke initialisere telefon: ${errorMsg}`,
           variant: 'destructive',
         });
         setCallStatus('error');
@@ -55,6 +66,7 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
     initializeTwilio();
 
     return () => {
+      console.log('Cleaning up Twilio manager');
       twilioManager?.destroy();
     };
   }, [userId]);
