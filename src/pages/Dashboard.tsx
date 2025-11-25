@@ -576,7 +576,7 @@ const Dashboard = () => {
       color: "text-primary",
     },
     {
-      title: "Ingen ændring i 24 timer",
+      title: "Overskredet deadline",
       value: stats.noStatusChange24Hours,
       icon: AlertCircle,
       color: "text-status-rejected",
