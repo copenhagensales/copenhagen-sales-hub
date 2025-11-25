@@ -14,7 +14,7 @@ export class TwilioVoiceManager {
   private async fetchTwilioToken(): Promise<string> {
     const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-token`;
     
-    console.log('📞 Fetching Twilio token from:', functionUrl);
+    console.log('[Twilio] Fetching token from:', functionUrl);
 
     const res = await fetch(functionUrl, {
       method: 'POST',
@@ -23,54 +23,81 @@ export class TwilioVoiceManager {
       },
     });
 
-    console.log('📡 Token endpoint response status:', res.status);
+    console.log('[Twilio] Token response status:', res.status);
+
+    const text = await res.text();
+    console.log('[Twilio] Raw token endpoint response text:', text);
 
     if (!res.ok) {
-      const text = await res.text();
-      console.error('❌ Twilio token endpoint failed:', res.status, text);
-      throw new Error(`Token endpoint failed: ${res.status} - ${text}`);
+      const errorMsg = `Token endpoint failed: ${res.status} ${text}`;
+      console.error('[Twilio] ❌ Token fetch failed:', errorMsg);
+      throw new Error(errorMsg);
     }
 
-    const data = await res.json();
-    console.log('📦 Token endpoint response:', data);
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.error('[Twilio] ❌ Could not parse JSON from token endpoint:', err);
+      throw new Error(`Could not parse token response: ${err}`);
+    }
+
+    console.log('[Twilio] Parsed token endpoint JSON:', data);
 
     if (!data.token || typeof data.token !== 'string') {
-      console.error('❌ Token endpoint returned no token:', data);
-      throw new Error('Token endpoint returned no token');
+      console.error('[Twilio] ❌ Token endpoint returned no token string:', data);
+      throw new Error('Token endpoint returned no token string');
     }
+
+    console.log('[Twilio] ✅ Token received (length:', data.token.length, ')');
+    console.log('[Twilio] Token (first 50 chars):', data.token.slice(0, 50), '...');
 
     return data.token;
   }
 
   async initialize() {
     try {
-      console.log('=== Initializing Twilio Voice ===');
-      console.log('Identity:', this.identity);
+      console.log('[Twilio] === Initializing Twilio Voice ===');
+      console.log('[Twilio] Identity:', this.identity);
 
       // Fetch Twilio access token from edge function
       const token = await this.fetchTwilioToken();
-      console.log('✅ Got Twilio token (first 40 chars):', token.slice(0, 40), '...');
+      console.log('[Twilio] ✅ Got token, type:', typeof token);
+      console.log('[Twilio] Token is string?', typeof token === 'string');
+      console.log('[Twilio] Token length:', token.length);
+      console.log('[Twilio] Token (first 50 chars):', token.slice(0, 50), '...');
+
+      // Verify it's a proper JWT format (should have 3 parts separated by dots)
+      const parts = token.split('.');
+      console.log('[Twilio] Token has', parts.length, 'parts (should be 3 for JWT)');
 
       // Initialize Twilio Device
-      console.log('🔧 Initializing Twilio Device with token...');
+      console.log('[Twilio] 🔧 Creating Twilio Device...');
       this.device = new Device(token, {
         logLevel: 1,
         codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
       });
 
+      console.log('[Twilio] ✅ Device object created:', this.device);
+
       // Set up event listeners
       this.device.on('registered', () => {
-        console.log('Twilio Device registered');
+        console.log('[Twilio] ✅ Device registered successfully');
         this.onCallStatusChange?.('ready');
       });
 
       this.device.on('error', (error) => {
-        console.error('=== Twilio Device Error ===');
-        console.error('Error object:', error);
-        console.error('Error code:', error?.code);
-        console.error('Error message:', error?.message);
-        console.error('Error name:', error?.name);
-        console.error('Full error:', JSON.stringify(error, null, 2));
+        console.error('[Twilio] ❌ === Device Error ===');
+        console.error('[Twilio] Error code:', error?.code);
+        console.error('[Twilio] Error message:', error?.message);
+        console.error('[Twilio] Error name:', error?.name);
+        console.error('[Twilio] Full error object:', error);
+        console.error('[Twilio] Error details:', JSON.stringify(error, null, 2));
+        
+        // Show user-friendly error alert
+        const errorMsg = `Twilio error: ${error?.code || 'Unknown'} - ${error?.message || 'No message'}`;
+        alert(errorMsg);
+        
         this.onCallStatusChange?.('error');
       });
 
@@ -82,16 +109,22 @@ export class TwilioVoiceManager {
       });
 
       // Register the device
+      console.log('[Twilio] 🔧 Registering device...');
       await this.device.register();
-      console.log('Twilio Device initialized successfully');
+      console.log('[Twilio] ✅ Device registered and initialized successfully');
 
       return true;
     } catch (error) {
-      console.error('=== Error Initializing Twilio Voice ===');
-      console.error('Error type:', error?.constructor?.name);
-      console.error('Error message:', error instanceof Error ? error.message : String(error));
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
-      console.error('Full error object:', error);
+      console.error('[Twilio] ❌ === Error Initializing Twilio Voice ===');
+      console.error('[Twilio] Error type:', error?.constructor?.name);
+      console.error('[Twilio] Error message:', error instanceof Error ? error.message : String(error));
+      console.error('[Twilio] Error stack:', error instanceof Error ? error.stack : 'No stack');
+      console.error('[Twilio] Full error object:', error);
+      
+      // Show user-friendly error
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      alert(`Kunne ikke initialisere telefon: ${errorMsg}`);
+      
       throw error;
     }
   }

@@ -48,15 +48,15 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
         console.log('Manager initialized successfully');
         setTwilioManager(manager);
       } catch (error) {
-        console.error('=== Error Initializing Softphone ===');
-        console.error('Error type:', error?.constructor?.name);
-        console.error('Error message:', error instanceof Error ? error.message : String(error));
-        console.error('Full error:', error);
+        console.error('[Softphone] === Error Initializing Softphone ===');
+        console.error('[Softphone] Error type:', error?.constructor?.name);
+        console.error('[Softphone] Error message:', error instanceof Error ? error.message : String(error));
+        console.error('[Softphone] Full error:', error);
         
         const errorMsg = error instanceof Error ? error.message : 'Ukendt fejl';
         toast({
-          title: 'Fejl',
-          description: `Kunne ikke initialisere telefon: ${errorMsg}`,
+          title: 'Telefon kunne ikke initialiseres',
+          description: errorMsg,
           variant: 'destructive',
         });
         setCallStatus('error');
