@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { create, getNumericDate } from "https://deno.land/x/djwt@v2.4/mod.ts";
+import { encodeBase64Url } from "https://deno.land/std@0.224.0/encoding/base64url.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,43 +59,57 @@ serve(async (req) => {
 
     console.log('Generating access token for identity:', identity);
 
-    // Create JWT token manually using djwt
-    const now = getNumericDate(new Date());
-    const exp = getNumericDate(new Date(Date.now() + 3600 * 1000)); // 1 hour
+    // Create JWT token manually with exact Twilio format
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + 3600; // 1 hour
 
-    // Import crypto key for signing
+    // JWT Header
+    const header = {
+      cty: 'twilio-fpa;v=1',
+      typ: 'JWT',
+      alg: 'HS256'
+    };
+
+    // JWT Payload with exact Twilio structure
+    const payload = {
+      jti: `${TWILIO_API_KEY_SID!}-${now}`,
+      iss: TWILIO_API_KEY_SID!,
+      sub: TWILIO_ACCOUNT_SID!,
+      exp: exp,
+      grants: {
+        identity: identity,
+        voice: {
+          incoming: {
+            allow: true
+          },
+          outgoing: {
+            application_sid: TWILIO_TWIML_APP_SID!
+          }
+        }
+      }
+    };
+
+    // Encode header and payload
     const encoder = new TextEncoder();
+    const headerB64 = encodeBase64Url(encoder.encode(JSON.stringify(header)));
+    const payloadB64 = encodeBase64Url(encoder.encode(JSON.stringify(payload)));
+    const signatureInput = `${headerB64}.${payloadB64}`;
+
+    // Create HMAC signature
     const keyData = encoder.encode(TWILIO_API_KEY_SECRET!);
     const key = await crypto.subtle.importKey(
       'raw',
       keyData,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
-      ['sign', 'verify']
+      ['sign']
     );
 
-    // Create JWT with Twilio-specific structure
-    const jwt = await create(
-      { alg: 'HS256', typ: 'JWT', cty: 'twilio-fpa;v=1' },
-      {
-        jti: `${TWILIO_API_KEY_SID!}-${now}`,
-        iss: TWILIO_API_KEY_SID!,
-        sub: TWILIO_ACCOUNT_SID!,
-        exp: exp,
-        grants: {
-          identity: identity,
-          voice: {
-            incoming: {
-              allow: true
-            },
-            outgoing: {
-              application_sid: TWILIO_TWIML_APP_SID!
-            }
-          }
-        }
-      },
-      key
-    );
+    const signatureData = encoder.encode(signatureInput);
+    const signature = await crypto.subtle.sign('HMAC', key, signatureData);
+    const signatureB64 = encodeBase64Url(new Uint8Array(signature));
+
+    const jwt = `${signatureInput}.${signatureB64}`;
 
     console.log('Access token generated successfully');
     console.log('Token length:', jwt.length);
@@ -105,13 +119,13 @@ serve(async (req) => {
     try {
       const parts = jwt.split('.');
       if (parts.length === 3) {
-        const header = JSON.parse(atob(parts[0]));
-        const payload = JSON.parse(atob(parts[1]));
-        console.log('🔍 JWT Header:', JSON.stringify(header));
-        console.log('🔍 JWT Payload iss (should start with SK):', payload.iss);
-        console.log('🔍 JWT Payload sub (should start with AC):', payload.sub);
-        console.log('🔍 JWT Payload grants:', JSON.stringify(payload.grants));
-        console.log('🔍 JWT Payload exp:', payload.exp, '(expires in', Math.floor((payload.exp * 1000 - Date.now()) / 1000 / 60), 'minutes)');
+        const decodedHeader = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
+        const decodedPayload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
+        console.log('🔍 JWT Header:', JSON.stringify(decodedHeader));
+        console.log('🔍 JWT Payload iss (should start with SK):', decodedPayload.iss);
+        console.log('🔍 JWT Payload sub (should start with AC):', decodedPayload.sub);
+        console.log('🔍 JWT Payload grants:', JSON.stringify(decodedPayload.grants));
+        console.log('🔍 JWT Payload exp:', decodedPayload.exp, '(expires in', Math.floor((decodedPayload.exp * 1000 - Date.now()) / 1000 / 60), 'minutes)');
       }
     } catch (e) {
       console.error('❌ Error decoding token for debug:', e);
