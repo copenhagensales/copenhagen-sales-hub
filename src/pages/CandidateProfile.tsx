@@ -10,6 +10,7 @@ import { SendSmsDialog } from "@/components/SendSmsDialog";
 import { QuickNotesSidebar } from "@/components/QuickNotesSidebar";
 import { CandidateSummaryCard } from "@/components/CandidateSummaryCard";
 import { CommunicationTimeline } from "@/components/CommunicationTimeline";
+import { ScheduleInterviewDialog } from "@/components/ScheduleInterviewDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ interface Application {
   hired_date?: string;
   employment_ended_date?: string;
   employment_end_reason?: string;
+  interview_date?: string;
 }
 
 interface Communication {
@@ -126,6 +128,8 @@ const CandidateProfile = () => {
   const [currentCallPhone, setCurrentCallPhone] = useState<string>('');
   const [showSmsDialog, setShowSmsDialog] = useState(false);
   const [smsApplicationId, setSmsApplicationId] = useState<string>('');
+  const [showScheduleInterviewDialog, setShowScheduleInterviewDialog] = useState(false);
+  const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<string>('');
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -662,6 +666,36 @@ const CandidateProfile = () => {
                   </div>
                 )}
                 
+                {/* Interview date section */}
+                {applications.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">Jobsamtale</h4>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedApplicationForInterview(applications[0].id);
+                          setShowScheduleInterviewDialog(true);
+                        }}
+                      >
+                        <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                        {applications[0].interview_date ? "Rediger" : "Planlæg"}
+                      </Button>
+                    </div>
+                    {applications[0].interview_date ? (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Planlagt: </span>
+                        <span className="font-medium">
+                          {format(new Date(applications[0].interview_date), "d. MMMM yyyy 'kl.' HH:mm", { locale: da })}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Ingen samtale planlagt</p>
+                    )}
+                  </div>
+                )}
+                
                 {candidate.notes && (
                   <div className="pt-4 border-t">
                     <h4 className="font-medium mb-2">Ansøgning fra kandidat</h4>
@@ -923,6 +957,17 @@ const CandidateProfile = () => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Schedule Interview Dialog */}
+      {applications.length > 0 && (
+        <ScheduleInterviewDialog
+          open={showScheduleInterviewDialog}
+          onOpenChange={setShowScheduleInterviewDialog}
+          applicationId={selectedApplicationForInterview}
+          currentInterviewDate={applications.find(a => a.id === selectedApplicationForInterview)?.interview_date}
+          onSuccess={fetchCandidateData}
+        />
+      )}
     </div>
   );
 };
