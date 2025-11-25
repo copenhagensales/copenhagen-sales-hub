@@ -14,6 +14,7 @@ import CandidateProfile from "./pages/CandidateProfile";
 import Employees from "./pages/Employees";
 import Messages from "./pages/Messages";
 import Reports from "./pages/Reports";
+import UpcomingHires from "./pages/UpcomingHires";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,10 @@ const App = () => {
             <Route
               path="/messages"
               element={session ? <Messages /> : <Navigate to="/auth" replace />}
+            />
+            <Route
+              path="/upcoming-hires"
+              element={session ? <UpcomingHires /> : <Navigate to="/auth" replace />}
             />
             <Route
               path="/pipeline"
