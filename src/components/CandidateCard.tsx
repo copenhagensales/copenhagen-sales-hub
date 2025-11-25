@@ -15,6 +15,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Mail, 
   Phone, 
@@ -42,6 +51,7 @@ interface Application {
   source?: string;
   notes?: string;
   team_id?: string;
+  hired_date?: string;
 }
 
 interface CandidateCardProps {
@@ -96,6 +106,9 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
   const [isOpen, setIsOpen] = useState(false);
   const [showSoftphone, setShowSoftphone] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showHiredDateDialog, setShowHiredDateDialog] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ applicationId: string; newStatus: string } | null>(null);
+  const [hiredDate, setHiredDate] = useState<string>('');
   const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
@@ -187,9 +200,21 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
     try {
       const app = applications.find(a => a.id === applicationId);
-      if (newStatus === "ansat" && !app?.team_id) {
-        toast.error("Du skal vælge et team før du kan sætte status til Ansat");
-        return;
+      
+      // If changing to "ansat", check if team and hired_date are set
+      if (newStatus === "ansat") {
+        if (!app?.team_id) {
+          toast.error("Du skal vælge et team før du kan sætte status til Ansat");
+          return;
+        }
+        
+        // Check if hired_date is set, if not show dialog
+        if (!app?.hired_date) {
+          setPendingStatusChange({ applicationId, newStatus });
+          setHiredDate(new Date().toISOString().split('T')[0]); // Default to today
+          setShowHiredDateDialog(true);
+          return;
+        }
       }
 
       const { error } = await supabase
@@ -237,6 +262,34 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
       if (onUpdate) onUpdate();
     } catch (error: any) {
       toast.error("Kunne ikke opdatere kilde");
+      console.error(error);
+    }
+  };
+
+  const handleConfirmHiredDate = async () => {
+    if (!pendingStatusChange || !hiredDate) {
+      toast.error("Ansættelsesdato er påkrævet");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ 
+          status: pendingStatusChange.newStatus as any,
+          hired_date: hiredDate
+        })
+        .eq("id", pendingStatusChange.applicationId);
+
+      if (error) throw error;
+
+      toast.success("Medarbejder markeret som ansat!");
+      setShowHiredDateDialog(false);
+      setPendingStatusChange(null);
+      setHiredDate('');
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere status");
       console.error(error);
     }
   };
@@ -537,6 +590,44 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Hired Date Dialog */}
+      <Dialog open={showHiredDateDialog} onOpenChange={setShowHiredDateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Angiv ansættelsesdato</DialogTitle>
+            <DialogDescription>
+              For at markere kandidaten som ansat skal du angive ansættelsesdatoen
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Ansættelsesdato *</Label>
+              <Input
+                type="date"
+                value={hiredDate}
+                onChange={(e) => setHiredDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowHiredDateDialog(false);
+                  setPendingStatusChange(null);
+                  setHiredDate('');
+                }}
+              >
+                Annuller
+              </Button>
+              <Button onClick={handleConfirmHiredDate}>
+                Bekræft ansættelse
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
