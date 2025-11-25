@@ -144,6 +144,7 @@ export type Database = {
           duration: number | null
           id: string
           outcome: string | null
+          read: boolean | null
           type: string
         }
         Insert: {
@@ -155,6 +156,7 @@ export type Database = {
           duration?: number | null
           id?: string
           outcome?: string | null
+          read?: boolean | null
           type: string
         }
         Update: {
@@ -166,6 +168,7 @@ export type Database = {
           duration?: number | null
           id?: string
           outcome?: string | null
+          read?: boolean | null
           type?: string
         }
         Relationships: [
