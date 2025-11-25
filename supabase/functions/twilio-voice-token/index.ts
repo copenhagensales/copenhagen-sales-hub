@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import twilio from "https://esm.sh/twilio@4.19.0";
+import { create, getNumericDate } from "https://deno.land/x/djwt@v2.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,28 +59,43 @@ serve(async (req) => {
 
     console.log('Generating access token for identity:', identity);
 
-    // Use Twilio's official library to generate the token
-    const AccessToken = twilio.jwt.AccessToken;
-    const VoiceGrant = AccessToken.VoiceGrant;
+    // Create JWT token manually using djwt
+    const now = getNumericDate(new Date());
+    const exp = getNumericDate(new Date(Date.now() + 3600 * 1000)); // 1 hour
 
-    // Create Voice Grant
-    const voiceGrant = new VoiceGrant({
-      outgoingApplicationSid: TWILIO_TWIML_APP_SID,
-      incomingAllow: true,
-    });
-
-    // Create Access Token
-    const token = new AccessToken(
-      TWILIO_ACCOUNT_SID!,
-      TWILIO_API_KEY_SID!,
-      TWILIO_API_KEY_SECRET!,
-      { identity: identity }
+    // Import crypto key for signing
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(TWILIO_API_KEY_SECRET!);
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign', 'verify']
     );
 
-    token.addGrant(voiceGrant);
-
-    // Generate JWT
-    const jwt = token.toJwt();
+    // Create JWT with Twilio-specific structure
+    const jwt = await create(
+      { alg: 'HS256', typ: 'JWT', cty: 'twilio-fpa;v=1' },
+      {
+        jti: `${TWILIO_API_KEY_SID!}-${now}`,
+        iss: TWILIO_API_KEY_SID!,
+        sub: TWILIO_ACCOUNT_SID!,
+        exp: exp,
+        grants: {
+          identity: identity,
+          voice: {
+            incoming: {
+              allow: true
+            },
+            outgoing: {
+              application_sid: TWILIO_TWIML_APP_SID!
+            }
+          }
+        }
+      },
+      key
+    );
 
     console.log('Access token generated successfully');
     console.log('Token length:', jwt.length);
@@ -92,14 +107,14 @@ serve(async (req) => {
       if (parts.length === 3) {
         const header = JSON.parse(atob(parts[0]));
         const payload = JSON.parse(atob(parts[1]));
-        console.log('JWT Header:', JSON.stringify(header));
-        console.log('JWT Payload iss:', payload.iss);
-        console.log('JWT Payload sub:', payload.sub);
-        console.log('JWT Payload grants:', JSON.stringify(payload.grants));
-        console.log('JWT Payload exp:', payload.exp, '(expires in', Math.floor((payload.exp * 1000 - Date.now()) / 1000 / 60), 'minutes)');
+        console.log('🔍 JWT Header:', JSON.stringify(header));
+        console.log('🔍 JWT Payload iss (should start with SK):', payload.iss);
+        console.log('🔍 JWT Payload sub (should start with AC):', payload.sub);
+        console.log('🔍 JWT Payload grants:', JSON.stringify(payload.grants));
+        console.log('🔍 JWT Payload exp:', payload.exp, '(expires in', Math.floor((payload.exp * 1000 - Date.now()) / 1000 / 60), 'minutes)');
       }
     } catch (e) {
-      console.error('Error decoding token for debug:', e);
+      console.error('❌ Error decoding token for debug:', e);
     }
 
     return new Response(
