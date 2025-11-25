@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
+import { NewCandidateDialog } from "@/components/NewCandidateDialog";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Mail, Phone, FileText, Calendar } from "lucide-react";
+import { Search, Mail, Phone, FileText, Calendar, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
@@ -29,6 +31,7 @@ const Candidates = () => {
   const [candidates, setCandidates] = useState<CandidateWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showNewCandidateDialog, setShowNewCandidateDialog] = useState(false);
 
   useEffect(() => {
     fetchCandidates();
@@ -134,12 +137,24 @@ const Candidates = () => {
       <Sidebar />
       <div className="flex-1 overflow-auto">
         <div className="p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Kandidater</h1>
-            <p className="text-muted-foreground">
-              {candidates.length} unikke personer i systemet
-            </p>
+          <div className="mb-8 flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Kandidater</h1>
+              <p className="text-muted-foreground">
+                {candidates.length} unikke personer i systemet
+              </p>
+            </div>
+            <Button onClick={() => setShowNewCandidateDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Tilføj kandidat
+            </Button>
           </div>
+
+          <NewCandidateDialog
+            open={showNewCandidateDialog}
+            onOpenChange={setShowNewCandidateDialog}
+            onSuccess={fetchCandidates}
+          />
 
           <div className="mb-6">
             <div className="relative">
