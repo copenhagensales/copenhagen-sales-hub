@@ -4,12 +4,19 @@ import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Inbox, TrendingUp, AlertCircle, UserPlus } from "lucide-react";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
+import { da } from "date-fns/locale";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface TeamHire {
   teamId: string;
   teamName: string;
   hireCount: number;
+}
+
+interface TrendDataPoint {
+  month: string;
+  [key: string]: string | number;
 }
 
 const Dashboard = () => {
@@ -20,10 +27,12 @@ const Dashboard = () => {
     overdueApplications: 0,
   });
   const [teamHires, setTeamHires] = useState<TeamHire[]>([]);
+  const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
 
   useEffect(() => {
     fetchStats();
     fetchTeamHires();
+    fetchTeamHiresTrend();
   }, []);
 
   const fetchStats = async () => {
@@ -107,6 +116,64 @@ const Dashboard = () => {
     }
   };
 
+  const fetchTeamHiresTrend = async () => {
+    try {
+      // Fetch all teams
+      const { data: teams, error: teamsError } = await supabase
+        .from("teams")
+        .select("id, name")
+        .order("name");
+
+      if (teamsError) throw teamsError;
+
+      // Generate last 6 months
+      const now = new Date();
+      const months = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = subMonths(now, i);
+        months.push({
+          date: date,
+          monthStart: startOfMonth(date).toISOString().split("T")[0],
+          monthEnd: endOfMonth(date).toISOString().split("T")[0],
+          label: format(date, "MMM yyyy", { locale: da }),
+        });
+      }
+
+      // Fetch all hired applications from the last 6 months
+      const sixMonthsAgo = months[0].monthStart;
+      const { data: hiredApps, error: appsError } = await supabase
+        .from("applications")
+        .select("team_id, hired_date")
+        .eq("status", "ansat")
+        .not("team_id", "is", null)
+        .not("hired_date", "is", null)
+        .gte("hired_date", sixMonthsAgo);
+
+      if (appsError) throw appsError;
+
+      // Build trend data
+      const chartData: TrendDataPoint[] = months.map((month) => {
+        const dataPoint: TrendDataPoint = { month: month.label };
+        
+        teams?.forEach((team) => {
+          const count = hiredApps?.filter((app) => {
+            if (!app.hired_date || app.team_id !== team.id) return false;
+            const hiredDate = app.hired_date.split("T")[0];
+            return hiredDate >= month.monthStart && hiredDate <= month.monthEnd;
+          }).length || 0;
+          
+          dataPoint[team.name] = count;
+        });
+
+        return dataPoint;
+      });
+
+      setTrendData(chartData);
+    } catch (error) {
+      console.error("Error fetching team hires trend:", error);
+    }
+  };
+
   const statCards = [
     {
       title: "Nye ansøgninger",
@@ -162,7 +229,7 @@ const Dashboard = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Nye ansættelser denne måned</CardTitle>
@@ -208,6 +275,75 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ansættelser trend - sidste 6 måneder</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {trendData.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Indlæser trend data...</p>
+              ) : (
+                <div className="h-[400px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="month" 
+                        className="text-xs"
+                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <YAxis 
+                        className="text-xs"
+                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ paddingTop: '20px' }}
+                        iconType="line"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="Team Nord" 
+                        stroke="hsl(var(--chart-1))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--chart-1))' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="Team Syd" 
+                        stroke="hsl(var(--chart-2))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--chart-2))' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="Team Vest" 
+                        stroke="hsl(var(--chart-3))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--chart-3))' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="Team Øst" 
+                        stroke="hsl(var(--chart-4))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--chart-4))' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
