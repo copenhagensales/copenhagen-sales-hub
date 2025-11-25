@@ -567,27 +567,96 @@ const CandidateProfile = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Rolle:</span>
-                        <Badge className={roleColors[applications[0].role]}>
-                          {roleLabels[applications[0].role]}
-                        </Badge>
+                        <Select
+                          value={applications[0].role}
+                          onValueChange={(value) => handleRoleChange(applications[0].id, value)}
+                        >
+                          <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                            <SelectValue>
+                              <Badge className={roleColors[applications[0].role]}>
+                                {roleLabels[applications[0].role]}
+                              </Badge>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            <SelectItem value="fieldmarketing">Fieldmarketing</SelectItem>
+                            <SelectItem value="salgskonsulent">Salgskonsulent</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Status:</span>
-                        <Badge className={statusColors[applications[0].status]}>
-                          {statusLabels[applications[0].status]}
-                        </Badge>
+                        <Select
+                          value={applications[0].status}
+                          onValueChange={(value) => handleStatusChange(applications[0].id, value)}
+                        >
+                          <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                            <SelectValue>
+                              <Badge className={statusColors[applications[0].status]}>
+                                {statusLabels[applications[0].status]}
+                              </Badge>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            <SelectItem value="ny">Ny</SelectItem>
+                            <SelectItem value="telefon_screening">Telefon-screening</SelectItem>
+                            <SelectItem value="case_rollespil">Case/Rollespil</SelectItem>
+                            <SelectItem value="interview">Interview</SelectItem>
+                            <SelectItem value="tilbud">Tilbud</SelectItem>
+                            <SelectItem value="ansat">Ansat</SelectItem>
+                            <SelectItem value="afslag">Afslag</SelectItem>
+                            <SelectItem value="ghosted_cold">Ghosted/Cold</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Kilde:</span>
-                        <Badge variant="outline">
-                          {applications[0].source || "Ikke angivet"}
-                        </Badge>
+                        <Select
+                          value={applications[0].source || "none"}
+                          onValueChange={(value) => handleSourceChange(applications[0].id, value === "none" ? "" : value)}
+                        >
+                          <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                            <SelectValue>
+                              <Badge variant="outline">
+                                {applications[0].source || "Ikke angivet"}
+                              </Badge>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            <SelectItem value="none">Ikke angivet</SelectItem>
+                            <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                            <SelectItem value="Jobindex">Jobindex</SelectItem>
+                            <SelectItem value="Indeed">Indeed</SelectItem>
+                            <SelectItem value="Facebook">Facebook</SelectItem>
+                            <SelectItem value="Direkte">Direkte</SelectItem>
+                            <SelectItem value="Referral">Referral</SelectItem>
+                            <SelectItem value="Zapier">Zapier</SelectItem>
+                            <SelectItem value="Andet">Andet</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Team:</span>
-                        <Badge variant="outline" className={applications[0].team_id ? "bg-primary/10 text-primary border-primary/20" : ""}>
-                          {teams.find(t => t.id === applications[0].team_id)?.name || "Ikke valgt"}
-                        </Badge>
+                        <Select
+                          value={applications[0].team_id || "none"}
+                          onValueChange={(value) => handleTeamChange(applications[0].id, value === "none" ? "" : value)}
+                        >
+                          <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                            <SelectValue>
+                              <Badge variant="outline" className={applications[0].team_id ? "bg-primary/10 text-primary border-primary/20" : ""}>
+                                {teams.find(t => t.id === applications[0].team_id)?.name || "Ikke valgt"}
+                              </Badge>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            <SelectItem value="none">Ingen team</SelectItem>
+                            {teams.map(team => (
+                              <SelectItem key={team.id} value={team.id}>
+                                {team.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
