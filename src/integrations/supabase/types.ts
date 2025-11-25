@@ -101,6 +101,44 @@ export type Database = {
           },
         ]
       }
+      candidate_notes: {
+        Row: {
+          candidate_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note_type: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note_type: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_notes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidates: {
         Row: {
           created_at: string
