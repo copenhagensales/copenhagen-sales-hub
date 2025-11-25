@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
 import Candidates from "./pages/Candidates";
+import CandidateProfile from "./pages/CandidateProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,10 @@ const App = () => {
             <Route
               path="/candidates"
               element={session ? <Candidates /> : <Navigate to="/auth" replace />}
+            />
+            <Route
+              path="/candidates/:id"
+              element={session ? <CandidateProfile /> : <Navigate to="/auth" replace />}
             />
             <Route
               path="/pipeline"
