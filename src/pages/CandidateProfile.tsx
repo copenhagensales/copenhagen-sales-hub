@@ -538,6 +538,62 @@ const CandidateProfile = () => {
                     </div>
                   </>
                 )}
+                
+                <Separator />
+                
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Opkaldsstatistik</h4>
+                  <div className="space-y-3">
+                    {(() => {
+                      const phoneCalls = communications.filter(c => c.type === 'phone');
+                      const answered = phoneCalls.filter(c => c.outcome === 'completed').length;
+                      const noContact = phoneCalls.filter(c => c.outcome === 'ingen kontakt').length;
+                      const totalCalls = phoneCalls.length;
+                      const answerRate = totalCalls > 0 ? Math.round((answered / totalCalls) * 100) : 0;
+
+                      if (totalCalls === 0) {
+                        return (
+                          <div className="text-sm text-muted-foreground text-center py-2">
+                            Ingen opkald registreret
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Total opkald</span>
+                            <Badge variant="outline">{totalCalls}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Besvaret</span>
+                            <Badge className="bg-status-success/10 text-status-success border-status-success/20">
+                              {answered}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Ingen kontakt</span>
+                            <Badge className="bg-status-rejected/10 text-status-rejected border-status-rejected/20">
+                              {noContact}
+                            </Badge>
+                          </div>
+                          <div className="pt-2">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-muted-foreground">Svar-rate</span>
+                              <span className="font-medium">{answerRate}%</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-status-success h-2 rounded-full transition-all"
+                                style={{ width: `${answerRate}%` }}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
