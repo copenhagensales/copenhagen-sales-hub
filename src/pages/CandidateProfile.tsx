@@ -7,6 +7,9 @@ import { EditCandidateDialog } from "@/components/EditCandidateDialog";
 import { Softphone } from "@/components/Softphone";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
+import { QuickNotesSidebar } from "@/components/QuickNotesSidebar";
+import { CandidateSummaryCard } from "@/components/CandidateSummaryCard";
+import { CommunicationTimeline } from "@/components/CommunicationTimeline";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,6 +95,14 @@ interface PerformanceReview {
   };
 }
 
+interface CandidateNote {
+  id: string;
+  content: string;
+  note_type: 'call' | 'email' | 'general' | 'important' | 'action_item';
+  created_at: string;
+  created_by: string | null;
+}
+
 const CandidateProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -99,6 +110,7 @@ const CandidateProfile = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [performanceReviews, setPerformanceReviews] = useState<PerformanceReview[]>([]);
+  const [candidateNotes, setCandidateNotes] = useState<CandidateNote[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewApplicationDialog, setShowNewApplicationDialog] = useState(false);
@@ -187,6 +199,16 @@ const CandidateProfile = () => {
 
         if (reviewsError) throw reviewsError;
         setPerformanceReviews(reviewsData || []);
+
+        // Fetch candidate notes
+        const { data: notesData, error: notesError } = await supabase
+          .from("candidate_notes")
+          .select("*")
+          .eq("candidate_id", id)
+          .order("created_at", { ascending: false });
+
+        if (notesError) throw notesError;
+        setCandidateNotes((notesData || []) as CandidateNote[]);
       }
     } catch (error: any) {
       toast.error("Kunne ikke hente kandidat data");
@@ -459,27 +481,18 @@ const CandidateProfile = () => {
             </div>
           </div>
 
-          <NewApplicationDialog
-            open={showNewApplicationDialog}
-            onOpenChange={setShowNewApplicationDialog}
-            candidateId={candidate.id}
-            candidateName={`${candidate.first_name} ${candidate.last_name}`}
-            onSuccess={fetchCandidateData}
+          {/* Summary Card */}
+          <CandidateSummaryCard
+            latestNote={candidateNotes[0]}
+            latestApplication={applications[0]}
           />
 
-          {showSoftphone && userId && (
-            <Softphone
-              userId={userId}
-              initialPhoneNumber={softphoneInitialNumber}
-              onClose={() => {
-                setShowSoftphone(false);
-                setSoftphoneInitialNumber('');
-              }}
-            />
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <Card className="lg:col-span-2">
+          {/* Main content grid with sidebar */}
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6 mt-6">
+            {/* Left column - Main content */}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-2xl">
                   {candidate.first_name} {candidate.last_name}
@@ -616,10 +629,10 @@ const CandidateProfile = () => {
                   </div>
                 </div>
               </CardContent>
-            </Card>
-          </div>
+                </Card>
+              </div>
 
-          <Tabs defaultValue="applications" className="w-full">
+              <Tabs defaultValue="applications" className="w-full">
             <TabsList className="grid w-full grid-cols-3 lg:w-auto">
               <TabsTrigger value="applications">Ansøgninger</TabsTrigger>
               <TabsTrigger value="communication">Kommunikation</TabsTrigger>
@@ -947,10 +960,40 @@ const CandidateProfile = () => {
                   </Card>
                 ))
               )}
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Right column - Quick Notes Sidebar */}
+          <div className="hidden xl:block sticky top-6 h-[calc(100vh-120px)]">
+            <QuickNotesSidebar
+              candidateId={candidate.id}
+              notes={candidateNotes}
+              onNotesUpdate={fetchCandidateData}
+            />
+          </div>
         </div>
       </div>
+    </div>
+
+    <NewApplicationDialog
+      open={showNewApplicationDialog}
+      onOpenChange={setShowNewApplicationDialog}
+      candidateId={candidate.id}
+      candidateName={`${candidate.first_name} ${candidate.last_name}`}
+      onSuccess={fetchCandidateData}
+    />
+
+    {showSoftphone && userId && (
+      <Softphone
+        userId={userId}
+        initialPhoneNumber={softphoneInitialNumber}
+        onClose={() => {
+          setShowSoftphone(false);
+          setSoftphoneInitialNumber('');
+        }}
+      />
+    )}
 
       {candidate && (
         <EditCandidateDialog
