@@ -77,6 +77,14 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
             if (debugUpdate.tokenLength !== undefined) {
               setDebugInfo(prev => ({ ...prev, tokenLength: debugUpdate.tokenLength }));
             }
+            if (debugUpdate.deviceError) {
+              setDebugInfo(prev => ({ 
+                ...prev, 
+                deviceStatus: 'error',
+                lastError: debugUpdate.deviceError,
+                lastErrorTime: new Date()
+              }));
+            }
           }
         );
 
@@ -365,8 +373,8 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
               
               {debugInfo.lastError && (
                 <div className="pt-2 border-t">
-                  <div className="text-muted-foreground mb-1">Seneste fejl:</div>
-                  <div className="text-destructive break-words text-[10px] bg-destructive/10 p-2 rounded">
+                  <div className="text-muted-foreground mb-1 font-medium">Seneste fejl:</div>
+                  <div className="text-destructive break-words text-[10px] bg-destructive/10 p-2 rounded whitespace-pre-wrap font-mono">
                     {debugInfo.lastError}
                   </div>
                   {debugInfo.lastErrorTime && (
@@ -374,6 +382,14 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
                       {debugInfo.lastErrorTime.toLocaleTimeString('da-DK')}
                     </div>
                   )}
+                </div>
+              )}
+              
+              {!debugInfo.lastError && (
+                <div className="pt-2 border-t">
+                  <div className="text-muted-foreground text-[10px] text-center py-1">
+                    ✓ Ingen fejl
+                  </div>
                 </div>
               )}
               
