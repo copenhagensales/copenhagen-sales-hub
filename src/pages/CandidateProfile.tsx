@@ -595,7 +595,7 @@ const CandidateProfile = () => {
                 
                 {candidate.notes && (
                   <div className="pt-4 border-t">
-                    <h4 className="font-medium mb-2">Generelle noter</h4>
+                    <h4 className="font-medium mb-2">Ansøgning fra kandidat</h4>
                     <p className="text-sm text-muted-foreground">{candidate.notes}</p>
                   </div>
                 )}
