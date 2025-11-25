@@ -503,7 +503,7 @@ const CandidateProfile = () => {
                                     </Badge>
                                   </SelectValue>
                                 </SelectTrigger>
-                                <SelectContent className="bg-popover">
+                                <SelectContent className="bg-popover z-50">
                                   <SelectItem value="fieldmarketing">Fieldmarketing</SelectItem>
                                   <SelectItem value="salgskonsulent">Salgskonsulent</SelectItem>
                                 </SelectContent>
@@ -524,7 +524,7 @@ const CandidateProfile = () => {
                                     </Badge>
                                   </SelectValue>
                                 </SelectTrigger>
-                                <SelectContent className="bg-popover">
+                                <SelectContent className="bg-popover z-50">
                                   <SelectItem value="ny">Ny</SelectItem>
                                   <SelectItem value="telefon_screening">Telefon-screening</SelectItem>
                                   <SelectItem value="case_rollespil">Case/Rollespil</SelectItem>
@@ -551,7 +551,7 @@ const CandidateProfile = () => {
                                     </Badge>
                                   </SelectValue>
                                 </SelectTrigger>
-                                <SelectContent className="bg-popover">
+                                <SelectContent className="bg-popover z-50">
                                   <SelectItem value="none">Ikke angivet</SelectItem>
                                   <SelectItem value="LinkedIn">LinkedIn</SelectItem>
                                   <SelectItem value="Jobindex">Jobindex</SelectItem>
@@ -559,6 +559,7 @@ const CandidateProfile = () => {
                                   <SelectItem value="Facebook">Facebook</SelectItem>
                                   <SelectItem value="Direkte">Direkte</SelectItem>
                                   <SelectItem value="Referral">Referral</SelectItem>
+                                  <SelectItem value="Zapier">Zapier</SelectItem>
                                   <SelectItem value="Andet">Andet</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -591,8 +592,43 @@ const CandidateProfile = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground mb-2">
                             {format(new Date(app.application_date), "d. MMMM yyyy 'kl.' HH:mm", { locale: da })}
+                          </div>
+
+                          {/* Quick actions */}
+                          <div className="flex items-center gap-2 mt-3">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  const { data, error } = await supabase.functions.invoke('call-candidate', {
+                                    body: { candidatePhone: candidate.phone }
+                                  });
+                                  
+                                  if (error) throw error;
+                                  
+                                  toast.success("Twilio ringer dig op nu og forbinder til kandidaten");
+                                } catch (err: any) {
+                                  console.error('Call error:', err);
+                                  toast.error("Kunne ikke starte opkaldet");
+                                }
+                              }}
+                              className="h-8"
+                            >
+                              <Phone className="h-3.5 w-3.5 mr-1.5" />
+                              Ring op
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => window.open(`mailto:${candidate.email}`)}
+                              className="h-8"
+                            >
+                              <Mail className="h-3.5 w-3.5 mr-1.5" />
+                              Email
+                            </Button>
                           </div>
                         </div>
                       </div>
