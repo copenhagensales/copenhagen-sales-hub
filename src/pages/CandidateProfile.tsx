@@ -6,6 +6,7 @@ import { NewApplicationDialog } from "@/components/NewApplicationDialog";
 import { EditCandidateDialog } from "@/components/EditCandidateDialog";
 import { Softphone } from "@/components/Softphone";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
+import { SendSmsDialog } from "@/components/SendSmsDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   AlertCircle,
   Plus,
   Edit,
+  MessageCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -109,6 +111,8 @@ const CandidateProfile = () => {
   const [showCallStatus, setShowCallStatus] = useState(false);
   const [currentCallSid, setCurrentCallSid] = useState<string>('');
   const [currentCallPhone, setCurrentCallPhone] = useState<string>('');
+  const [showSmsDialog, setShowSmsDialog] = useState(false);
+  const [smsApplicationId, setSmsApplicationId] = useState<string>('');
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -399,6 +403,21 @@ const CandidateProfile = () => {
               >
                 <Mail className="h-4 w-4 md:mr-2" />
                 <span className="hidden sm:inline ml-1">Email</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (applications.length > 0) {
+                    setSmsApplicationId(applications[0].id);
+                    setShowSmsDialog(true);
+                  } else {
+                    toast.error("Ingen ansøgninger fundet");
+                  }
+                }}
+                className="flex-1 md:flex-initial"
+              >
+                <MessageCircle className="h-4 w-4 md:mr-2" />
+                <span className="hidden sm:inline ml-1">SMS</span>
               </Button>
               <Button
                 variant="outline"
@@ -762,6 +781,19 @@ const CandidateProfile = () => {
                             <Button 
                               size="sm" 
                               variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSmsApplicationId(app.id);
+                                setShowSmsDialog(true);
+                              }}
+                              className="h-8"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                              SMS
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
                               onClick={() => window.open(`mailto:${candidate.email}`)}
                               className="h-8"
                             >
@@ -931,6 +963,19 @@ const CandidateProfile = () => {
             setCurrentCallPhone('');
             fetchCandidateData(); // Refresh to show new call log
             toast.success("Opkald afsluttet");
+          }}
+        />
+      )}
+
+      {showSmsDialog && candidate && (
+        <SendSmsDialog
+          open={showSmsDialog}
+          onOpenChange={setShowSmsDialog}
+          candidatePhone={candidate.phone}
+          candidateName={`${candidate.first_name} ${candidate.last_name}`}
+          applicationId={smsApplicationId}
+          onSmsSent={() => {
+            fetchCandidateData(); // Refresh to show new SMS log
           }}
         />
       )}

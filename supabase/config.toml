@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.zapier-webhook]
 verify_jwt = false
+
+[functions.send-sms]
+verify_jwt = false
+
+[functions.hangup-call]
+verify_jwt = false
