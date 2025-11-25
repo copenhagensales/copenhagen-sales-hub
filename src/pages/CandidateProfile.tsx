@@ -201,6 +201,40 @@ const CandidateProfile = () => {
     }
   };
 
+  const handleRoleChange = async (applicationId: string, newRole: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ role: newRole as any })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Rolle opdateret!");
+      fetchCandidateData();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere rolle");
+      console.error(error);
+    }
+  };
+
+  const handleSourceChange = async (applicationId: string, newSource: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ source: newSource || null })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Kilde opdateret!");
+      fetchCandidateData();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere kilde");
+      console.error(error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen">
@@ -352,10 +386,29 @@ const CandidateProfile = () => {
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <Badge className={roleColors[app.role]}>
-                              {roleLabels[app.role]}
-                            </Badge>
+                          <div className="flex items-center gap-2 mb-3 flex-wrap">
+                            {/* Role selector */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">Rolle:</span>
+                              <Select
+                                value={app.role}
+                                onValueChange={(value) => handleRoleChange(app.id, value)}
+                              >
+                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                  <SelectValue>
+                                    <Badge className={roleColors[app.role]}>
+                                      {roleLabels[app.role]}
+                                    </Badge>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover">
+                                  <SelectItem value="fieldmarketing">Fieldmarketing</SelectItem>
+                                  <SelectItem value="salgskonsulent">Salgskonsulent</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Status selector */}
                             <div className="flex items-center gap-2">
                               <span className="text-sm text-muted-foreground">Status:</span>
                               <Select
@@ -381,9 +434,33 @@ const CandidateProfile = () => {
                                 </SelectContent>
                               </Select>
                             </div>
-                            {app.source && (
-                              <Badge variant="outline">{app.source}</Badge>
-                            )}
+
+                            {/* Source selector */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">Kilde:</span>
+                              <Select
+                                value={app.source || "none"}
+                                onValueChange={(value) => handleSourceChange(app.id, value === "none" ? "" : value)}
+                              >
+                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                  <SelectValue>
+                                    <Badge variant="outline">
+                                      {app.source || "Ikke angivet"}
+                                    </Badge>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover">
+                                  <SelectItem value="none">Ikke angivet</SelectItem>
+                                  <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                                  <SelectItem value="Jobindex">Jobindex</SelectItem>
+                                  <SelectItem value="Indeed">Indeed</SelectItem>
+                                  <SelectItem value="Facebook">Facebook</SelectItem>
+                                  <SelectItem value="Direkte">Direkte</SelectItem>
+                                  <SelectItem value="Referral">Referral</SelectItem>
+                                  <SelectItem value="Andet">Andet</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {format(new Date(app.application_date), "d. MMMM yyyy 'kl.' HH:mm", { locale: da })}
