@@ -571,8 +571,8 @@ const CandidateProfile = () => {
                               Team {app.status === "ansat" && <span className="text-destructive">*</span>}:
                             </span>
                             <Select
-                              value={app.team_id || ""}
-                              onValueChange={(value) => handleTeamChange(app.id, value)}
+                              value={app.team_id || "none"}
+                              onValueChange={(value) => handleTeamChange(app.id, value === "none" ? "" : value)}
                             >
                               <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
                                 <SelectValue>
@@ -582,7 +582,7 @@ const CandidateProfile = () => {
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent className="bg-popover z-50">
-                                <SelectItem value="">Ingen team</SelectItem>
+                                <SelectItem value="none">Ingen team</SelectItem>
                                 {teams.map(team => (
                                   <SelectItem key={team.id} value={team.id}>
                                     {team.name}
