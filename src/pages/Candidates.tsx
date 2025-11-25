@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ interface CandidateWithStats {
 }
 
 const Candidates = () => {
+  const navigate = useNavigate();
   const [candidates, setCandidates] = useState<CandidateWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -161,9 +163,7 @@ const Candidates = () => {
                 <Card
                   key={candidate.id}
                   className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/50"
-                  onClick={() => {
-                    toast.info("Åbner kandidatprofil (kommer snart)");
-                  }}
+                  onClick={() => navigate(`/candidates/${candidate.id}`)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between gap-4">
