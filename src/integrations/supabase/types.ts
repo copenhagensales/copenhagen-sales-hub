@@ -22,6 +22,9 @@ export type Database = {
           created_at: string
           cv_url: string | null
           deadline: string | null
+          employment_end_reason: string | null
+          employment_ended_date: string | null
+          hired_date: string | null
           id: string
           next_step: string | null
           notes: string | null
@@ -31,6 +34,7 @@ export type Database = {
           role: Database["public"]["Enums"]["application_role"]
           source: string | null
           status: Database["public"]["Enums"]["application_status"]
+          team_id: string | null
           test_results_url: string | null
           updated_at: string
         }
@@ -41,6 +45,9 @@ export type Database = {
           created_at?: string
           cv_url?: string | null
           deadline?: string | null
+          employment_end_reason?: string | null
+          employment_ended_date?: string | null
+          hired_date?: string | null
           id?: string
           next_step?: string | null
           notes?: string | null
@@ -50,6 +57,7 @@ export type Database = {
           role: Database["public"]["Enums"]["application_role"]
           source?: string | null
           status?: Database["public"]["Enums"]["application_status"]
+          team_id?: string | null
           test_results_url?: string | null
           updated_at?: string
         }
@@ -60,6 +68,9 @@ export type Database = {
           created_at?: string
           cv_url?: string | null
           deadline?: string | null
+          employment_end_reason?: string | null
+          employment_ended_date?: string | null
+          hired_date?: string | null
           id?: string
           next_step?: string | null
           notes?: string | null
@@ -69,6 +80,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["application_role"]
           source?: string | null
           status?: Database["public"]["Enums"]["application_status"]
+          team_id?: string | null
           test_results_url?: string | null
           updated_at?: string
         }
@@ -78,6 +90,13 @@ export type Database = {
             columns: ["candidate_id"]
             isOneToOne: false
             referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -267,6 +286,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
