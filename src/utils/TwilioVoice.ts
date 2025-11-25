@@ -14,17 +14,29 @@ export class TwilioVoiceManager {
 
   async initialize() {
     try {
-      console.log('Initializing Twilio Voice with identity:', this.identity);
+      console.log('=== Initializing Twilio Voice ===');
+      console.log('Identity:', this.identity);
 
       // Get access token from edge function
+      console.log('Requesting access token from edge function...');
       const { data, error } = await supabase.functions.invoke('twilio-voice-token', {
         body: { identity: this.identity }
       });
 
-      if (error) throw error;
-      if (!data?.token) throw new Error('No token received');
+      console.log('Token endpoint response:', { data, error });
 
-      console.log('Access token received');
+      if (error) {
+        console.error('Error from token endpoint:', error);
+        throw new Error(`Token endpoint error: ${JSON.stringify(error)}`);
+      }
+      
+      if (!data?.token) {
+        console.error('No token in response. Full response:', data);
+        throw new Error(`No token received. Response: ${JSON.stringify(data)}`);
+      }
+
+      console.log('Access token received, length:', data.token.length);
+      console.log('Token first 50 chars:', data.token.substring(0, 50));
 
       // Initialize device
       this.device = new Device(data.token, {
@@ -39,7 +51,12 @@ export class TwilioVoiceManager {
       });
 
       this.device.on('error', (error) => {
-        console.error('Twilio Device error:', error);
+        console.error('=== Twilio Device Error ===');
+        console.error('Error object:', error);
+        console.error('Error code:', error?.code);
+        console.error('Error message:', error?.message);
+        console.error('Error name:', error?.name);
+        console.error('Full error:', JSON.stringify(error, null, 2));
         this.onCallStatusChange?.('error');
       });
 
@@ -56,7 +73,11 @@ export class TwilioVoiceManager {
 
       return true;
     } catch (error) {
-      console.error('Error initializing Twilio Voice:', error);
+      console.error('=== Error Initializing Twilio Voice ===');
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+      console.error('Full error object:', error);
       throw error;
     }
   }
