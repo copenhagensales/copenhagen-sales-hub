@@ -17,21 +17,41 @@ export class TwilioVoiceManager {
       console.log('=== Initializing Twilio Voice ===');
       console.log('Identity:', this.identity);
 
-      // Get access token from edge function
+      // Get access token from edge function with detailed error handling
       console.log('Requesting access token from edge function...');
+      console.log('Function name: twilio-voice-token');
+      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      
       const { data, error } = await supabase.functions.invoke('twilio-voice-token', {
         body: { identity: this.identity }
       });
 
-      console.log('Token endpoint response:', { data, error });
+      console.log('=== Token Endpoint Response ===');
+      console.log('Data:', data);
+      console.log('Error:', error);
+      console.log('Error type:', error?.constructor?.name);
+      console.log('Error message:', error?.message);
+      console.log('Error context:', error?.context);
+      console.log('Full error object:', JSON.stringify(error, null, 2));
 
       if (error) {
-        console.error('Error from token endpoint:', error);
-        throw new Error(`Token endpoint error: ${JSON.stringify(error)}`);
+        console.error('❌ Error from token endpoint:');
+        console.error('  Name:', error.name);
+        console.error('  Message:', error.message);
+        console.error('  Context:', error.context);
+        console.error('  Full error:', error);
+        
+        // Try to get more details about the error
+        if (error.context) {
+          console.error('  Error context details:', JSON.stringify(error.context, null, 2));
+        }
+        
+        throw new Error(`Token endpoint error: ${error.name || 'Unknown'} - ${error.message || 'No message'} - Context: ${JSON.stringify(error.context || {})}`);
       }
       
       if (!data?.token) {
-        console.error('No token in response. Full response:', data);
+        console.error('❌ No token in response');
+        console.error('  Full response data:', JSON.stringify(data, null, 2));
         throw new Error(`No token received. Response: ${JSON.stringify(data)}`);
       }
 
