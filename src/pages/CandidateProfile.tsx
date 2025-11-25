@@ -481,12 +481,6 @@ const CandidateProfile = () => {
             </div>
           </div>
 
-          {/* Summary Card */}
-          <CandidateSummaryCard
-            latestNote={candidateNotes[0]}
-            latestApplication={applications[0]}
-          />
-
           {/* Main content grid with sidebar */}
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6 mt-6">
             {/* Left column - Main content */}
