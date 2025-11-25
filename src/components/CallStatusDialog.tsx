@@ -49,6 +49,22 @@ export const CallStatusDialog = ({
   };
 
   const handleHangup = async () => {
+    // Hang up the call via Twilio API
+    if (callSid) {
+      try {
+        console.log('Hanging up call:', callSid);
+        const { error } = await supabase.functions.invoke('hangup-call', {
+          body: { callSid }
+        });
+        
+        if (error) {
+          console.error('Error hanging up call:', error);
+        }
+      } catch (error) {
+        console.error('Error hanging up call:', error);
+      }
+    }
+    
     // Log call to database if we have an applicationId
     if (applicationId && status === 'connected') {
       try {
