@@ -11,7 +11,8 @@ import {
   LogOut,
   Briefcase,
   Menu,
-  X
+  X,
+  MessageSquare
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -28,6 +29,7 @@ export const Sidebar = () => {
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/candidates", icon: Users, label: "Kandidater" },
     { to: "/employees", icon: Briefcase, label: "Ansatte" },
+    { to: "/messages", icon: MessageSquare, label: "Beskeder" },
     { to: "/pipeline", icon: Kanban, label: "Pipeline" },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
   ];

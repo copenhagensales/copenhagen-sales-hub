@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Candidates from "./pages/Candidates";
 import CandidateProfile from "./pages/CandidateProfile";
 import Employees from "./pages/Employees";
+import Messages from "./pages/Messages";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
@@ -73,6 +74,10 @@ const App = () => {
             <Route
               path="/employees"
               element={session ? <Employees /> : <Navigate to="/auth" replace />}
+            />
+            <Route
+              path="/messages"
+              element={session ? <Messages /> : <Navigate to="/auth" replace />}
             />
             <Route
               path="/pipeline"
