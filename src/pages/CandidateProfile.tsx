@@ -577,15 +577,6 @@ const CandidateProfile = () => {
                   <div className="text-sm text-muted-foreground mb-1">Total ansøgninger</div>
                   <div className="text-2xl font-bold">{applications.length}</div>
                 </div>
-                {performanceReviews.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <div className="text-sm text-muted-foreground mb-1">Performance reviews</div>
-                      <div className="text-2xl font-bold">{performanceReviews.length}</div>
-                    </div>
-                  </>
-                )}
                 
                 <Separator />
                 
@@ -633,10 +624,9 @@ const CandidateProfile = () => {
               </div>
 
               <Tabs defaultValue="applications" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 lg:w-auto">
+            <TabsList className="grid w-full grid-cols-2 lg:w-auto">
               <TabsTrigger value="applications">Ansøgninger</TabsTrigger>
               <TabsTrigger value="communication">Kommunikation</TabsTrigger>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
             </TabsList>
 
             <TabsContent value="applications" className="space-y-4">
@@ -921,46 +911,6 @@ const CandidateProfile = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="performance" className="space-y-4">
-              {performanceReviews.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Ingen performance reviews endnu</p>
-                    <p className="text-xs mt-1">Performance data vises kun for ansatte kandidater</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                performanceReviews.map((review) => (
-                  <Card key={review.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <TrendingUp className={`h-5 w-5 ${getRatingColor(review.rating)}`} />
-                            <span className="font-semibold">{review.review_period} dage review</span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {roleLabels[review.application.role]} position
-                          </div>
-                        </div>
-                        <Badge className={`${getRatingColor(review.rating)} bg-transparent border`}>
-                          Rating: {review.rating}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground mb-3">
-                        {format(new Date(review.review_date), "d. MMMM yyyy", { locale: da })}
-                      </div>
-                      {review.comments && (
-                        <div className="p-3 bg-muted/50 rounded">
-                          <p className="text-sm">{review.comments}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-              </TabsContent>
             </Tabs>
           </div>
 
