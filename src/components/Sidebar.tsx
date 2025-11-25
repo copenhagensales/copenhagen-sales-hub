@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -19,6 +20,43 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 export const Sidebar = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetchUnreadCount();
+
+    // Subscribe to changes in communication_logs
+    const channel = supabase
+      .channel('unread-messages-count')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'communication_logs',
+          filter: 'direction=eq.inbound'
+        },
+        () => {
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    const { count } = await supabase
+      .from('communication_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('direction', 'inbound')
+      .eq('read', false)
+      .in('type', ['sms', 'email']);
+
+    setUnreadCount(count || 0);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -29,7 +67,7 @@ export const Sidebar = () => {
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/candidates", icon: Users, label: "Kandidater" },
     { to: "/employees", icon: Briefcase, label: "Ansatte" },
-    { to: "/messages", icon: MessageSquare, label: "Beskeder" },
+    { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
     { to: "/pipeline", icon: Kanban, label: "Pipeline" },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
   ];
@@ -54,6 +92,11 @@ export const Sidebar = () => {
           >
             <item.icon className="h-5 w-5" />
             <span>{item.label}</span>
+            {item.badge !== undefined && item.badge > 0 && (
+              <Badge variant="destructive" className="ml-auto">
+                {item.badge}
+              </Badge>
+            )}
           </NavLink>
         ))}
       </nav>
