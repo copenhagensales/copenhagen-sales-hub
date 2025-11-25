@@ -128,8 +128,7 @@ const Employees = () => {
         .from("revenue_data")
         .select("*")
         .eq("application_id", employeeId)
-        .order("period_year", { ascending: false })
-        .order("period_month", { ascending: false });
+        .order("period", { ascending: true });
 
       if (revenueError) throw revenueError;
       setRevenueData(revenue || []);
