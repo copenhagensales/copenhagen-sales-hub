@@ -26,47 +26,39 @@ export class TwilioVoiceManager {
   }
 
   private async fetchTwilioToken(): Promise<string> {
-    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-token`;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const url = `${supabaseUrl}/functions/v1/twilio-token`;
     
-    console.log('[Twilio] Fetching token from:', functionUrl);
-
-    const res = await fetch(functionUrl, {
+    console.log('[Twilio] Fetching token from:', url);
+    
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    console.log('[Twilio] Token response status:', res.status);
-
-    const text = await res.text();
-    console.log('[Twilio] Raw token endpoint response text:', text);
-
-    if (!res.ok) {
-      const errorMsg = `Token endpoint failed: ${res.status} ${text}`;
-      console.error('[Twilio] ❌ Token fetch failed:', errorMsg);
-      throw new Error(errorMsg);
+    console.log('[Twilio] Token response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Twilio] Token fetch failed:', errorText);
+      throw new Error(`Failed to fetch token: ${response.status} ${errorText}`);
     }
 
-    let data: any;
-    try {
-      data = JSON.parse(text);
-    } catch (err) {
-      console.error('[Twilio] ❌ Could not parse JSON from token endpoint:', err);
-      throw new Error(`Could not parse token response: ${err}`);
-    }
-
-    console.log('[Twilio] Parsed token endpoint JSON:', data);
+    const data = await response.json();
+    console.log('[Twilio] Token response:', { 
+      hasToken: !!data.token,
+      tokenLength: data.token?.length 
+    });
 
     if (!data.token || typeof data.token !== 'string') {
-      console.error('[Twilio] ❌ Token endpoint returned no token string:', data);
-      throw new Error('Token endpoint returned no token string');
+      throw new Error('No valid token in response');
     }
 
-    console.log('[Twilio] ✅ Token received (length:', data.token.length, ')');
-    console.log('[Twilio] Token (first 50 chars):', data.token.slice(0, 50), '...');
+    console.log('[Twilio] Token received, length:', data.token.length);
+    console.log('[Twilio] Token preview:', data.token.slice(0, 50) + '...');
 
-    // Update debug info with token length
     this.onDebugUpdate?.({ tokenLength: data.token.length });
 
     return data.token;

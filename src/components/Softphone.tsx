@@ -186,72 +186,80 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
 
   const testCredentials = async () => {
     setIsTestingCredentials(true);
-    console.log('[Softphone] Testing Twilio credentials...');
-
     try {
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-token`;
+      setDebugInfo(prev => ({ ...prev, tokenStatus: "fetching" }));
+      toast({ description: "Testing Twilio credentials..." });
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const url = `${supabaseUrl}/functions/v1/twilio-token`;
       
-      console.log('[Test] Calling token endpoint:', functionUrl);
+      console.log("[Test] Calling:", url);
       
-      const res = await fetch(functionUrl, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      console.log('[Test] Response status:', res.status);
-      
-      const text = await res.text();
-      console.log('[Test] Response text:', text);
+      console.log("[Test] Response status:", response.status);
 
-      if (!res.ok) {
-        const errorData = text ? JSON.parse(text) : {};
-        console.error('[Test] ❌ Credential test failed:', errorData);
-        
-        setDebugInfo(prev => ({
-          ...prev,
-          lastError: errorData.error || `HTTP ${res.status}`,
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.error("[Test] Failed:", responseText);
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          tokenStatus: "error",
+          lastError: `HTTP ${response.status}: ${responseText}`,
           lastErrorTime: new Date()
         }));
-
         toast({
-          title: 'Credentials test fejlede',
-          description: errorData.details ? errorData.details.join(', ') : errorData.error || `HTTP ${res.status}`,
-          variant: 'destructive',
+          title: "Test failed",
+          description: `HTTP ${response.status}`,
+          variant: "destructive"
         });
         return;
       }
 
-      const data = JSON.parse(text);
-      console.log('[Test] ✅ Token received, length:', data.token?.length);
-
-      toast({
-        title: 'Credentials test lykkedes!',
-        description: `Token genereret (${data.token?.length} chars)`,
-      });
-
-      setDebugInfo(prev => ({
-        ...prev,
-        tokenStatus: 'verified',
-        tokenLength: data.token?.length || 0,
-        lastError: null
-      }));
-
-    } catch (error) {
-      console.error('[Test] ❌ Error testing credentials:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      const data = await response.json();
       
-      setDebugInfo(prev => ({
-        ...prev,
-        lastError: errorMsg,
+      if (data.token) {
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          tokenStatus: "verified",
+          tokenLength: data.token.length,
+          lastError: null
+        }));
+        toast({
+          title: "✓ Credentials verified",
+          description: `Token generated (${data.token.length} chars)`
+        });
+        console.log("[Test] Token received, length:", data.token.length);
+      } else {
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          tokenStatus: "error",
+          lastError: "No token in response",
+          lastErrorTime: new Date()
+        }));
+        toast({
+          title: "Test failed",
+          description: "No token in response",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error("[Test] Error:", error);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        tokenStatus: "error",
+        lastError: error?.message || String(error),
         lastErrorTime: new Date()
       }));
-
       toast({
-        title: 'Credentials test fejlede',
-        description: errorMsg,
-        variant: 'destructive',
+        title: "Test failed",
+        description: error?.message || 'Unknown error',
+        variant: "destructive"
       });
     } finally {
       setIsTestingCredentials(false);
