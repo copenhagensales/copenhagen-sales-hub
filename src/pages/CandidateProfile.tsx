@@ -524,7 +524,20 @@ const CandidateProfile = () => {
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  <span>Første ansøgning: {format(new Date(candidate.created_at), "d. MMMM yyyy", { locale: da })}</span>
+                  <div className="flex flex-col gap-1">
+                    {applications.length > 1 ? (
+                      <>
+                        <span className="font-medium">Ansøgningsdatoer:</span>
+                        {applications.map((app, index) => (
+                          <span key={app.id} className="text-sm">
+                            {index + 1}. {format(new Date(app.application_date), "d. MMMM yyyy", { locale: da })}
+                          </span>
+                        ))}
+                      </>
+                    ) : (
+                      <span>Første ansøgning: {format(new Date(candidate.created_at), "d. MMMM yyyy", { locale: da })}</span>
+                    )}
+                  </div>
                 </div>
                 {candidate.notes && (
                   <div className="pt-4 border-t">
