@@ -9,6 +9,7 @@ import { Session } from "@supabase/supabase-js";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
+import Candidates from "./pages/Candidates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,7 +62,7 @@ const App = () => {
             />
             <Route
               path="/candidates"
-              element={session ? <Dashboard /> : <Navigate to="/auth" replace />}
+              element={session ? <Candidates /> : <Navigate to="/auth" replace />}
             />
             <Route
               path="/pipeline"
