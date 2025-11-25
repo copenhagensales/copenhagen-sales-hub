@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Inbox, TrendingUp, AlertCircle, UserPlus, Target, Calendar } from "lucide-react";
+import { Users, Inbox, TrendingUp, AlertCircle, UserPlus, Target, Calendar, TrendingDown } from "lucide-react";
 import { startOfMonth, endOfMonth, subMonths, format, subYears, addMonths, subDays, startOfDay } from "date-fns";
 import { da } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
@@ -59,6 +59,9 @@ const Dashboard = () => {
     last24Hours: 0,
     last7Days: 0,
     noStatusChange24Hours: 0,
+    trend24Hours: 0,
+    trend7Days: 0,
+    trend30Days: 0,
   });
   const [teamHires, setTeamHires] = useState<TeamHire[]>([]);
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
@@ -86,6 +89,11 @@ const Dashboard = () => {
       const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
       const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      
+      // Previous periods for comparison
+      const previous24Hours = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
+      const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const previous30Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
       // Applications received in last 30 days
       const { count: last30DaysCount } = await supabase
@@ -93,17 +101,38 @@ const Dashboard = () => {
         .select("*", { count: "exact", head: true })
         .gte("application_date", last30Days);
 
+      // Applications received in previous 30 days (30-60 days ago)
+      const { count: previous30DaysCount } = await supabase
+        .from("applications")
+        .select("*", { count: "exact", head: true })
+        .gte("application_date", previous30Days)
+        .lt("application_date", last30Days);
+
       // Applications received in last 24 hours
       const { count: last24HoursCount } = await supabase
         .from("applications")
         .select("*", { count: "exact", head: true })
         .gte("application_date", last24Hours);
 
+      // Applications received in previous 24 hours (24-48 hours ago)
+      const { count: previous24HoursCount } = await supabase
+        .from("applications")
+        .select("*", { count: "exact", head: true })
+        .gte("application_date", previous24Hours)
+        .lt("application_date", last24Hours);
+
       // Applications received in last 7 days
       const { count: last7DaysCount } = await supabase
         .from("applications")
         .select("*", { count: "exact", head: true })
         .gte("application_date", last7Days);
+
+      // Applications received in previous 7 days (7-14 days ago)
+      const { count: previous7DaysCount } = await supabase
+        .from("applications")
+        .select("*", { count: "exact", head: true })
+        .gte("application_date", previous7Days)
+        .lt("application_date", last7Days);
 
       // Applications with no status change in last 24 hours
       const { count: noStatusChange } = await supabase
@@ -112,11 +141,27 @@ const Dashboard = () => {
         .lt("updated_at", last24Hours)
         .not("status", "in", '("ansat","afslag","ghosted_cold")');
 
+      // Calculate trends
+      const trend24Hours = previous24HoursCount && previous24HoursCount > 0
+        ? Math.round(((last24HoursCount || 0) - (previous24HoursCount || 0)) / (previous24HoursCount || 1) * 100)
+        : 0;
+
+      const trend7Days = previous7DaysCount && previous7DaysCount > 0
+        ? Math.round(((last7DaysCount || 0) - (previous7DaysCount || 0)) / (previous7DaysCount || 1) * 100)
+        : 0;
+
+      const trend30Days = previous30DaysCount && previous30DaysCount > 0
+        ? Math.round(((last30DaysCount || 0) - (previous30DaysCount || 0)) / (previous30DaysCount || 1) * 100)
+        : 0;
+
       setStats({
         last30Days: last30DaysCount || 0,
         last24Hours: last24HoursCount || 0,
         last7Days: last7DaysCount || 0,
         noStatusChange24Hours: noStatusChange || 0,
+        trend24Hours,
+        trend7Days,
+        trend30Days,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -562,24 +607,28 @@ const Dashboard = () => {
       value: stats.last24Hours,
       icon: Inbox,
       color: "text-status-new",
+      trend: stats.trend24Hours,
     },
     {
       title: "Sidste 7 dage",
       value: stats.last7Days,
       icon: TrendingUp,
       color: "text-status-progress",
+      trend: stats.trend7Days,
     },
     {
       title: "Sidste 30 dage",
       value: stats.last30Days,
       icon: Users,
       color: "text-primary",
+      trend: stats.trend30Days,
     },
     {
       title: "Overskredet deadline",
       value: stats.noStatusChange24Hours,
       icon: AlertCircle,
       color: "text-status-rejected",
+      trend: undefined,
     },
   ];
 
@@ -603,8 +652,22 @@ const Dashboard = () => {
                   <stat.icon className={`h-4 w-4 ${stat.color}`} />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-3xl font-bold ${stat.color}`}>
-                    {stat.value}
+                  <div className="flex items-end justify-between">
+                    <div className={`text-3xl font-bold ${stat.color}`}>
+                      {stat.value}
+                    </div>
+                    {stat.trend !== undefined && (
+                      <div className={`flex items-center gap-1 text-sm font-medium ${
+                        stat.trend > 0 ? 'text-status-success' : stat.trend < 0 ? 'text-status-rejected' : 'text-muted-foreground'
+                      }`}>
+                        {stat.trend > 0 ? (
+                          <TrendingUp className="h-4 w-4" />
+                        ) : stat.trend < 0 ? (
+                          <TrendingDown className="h-4 w-4" />
+                        ) : null}
+                        <span>{stat.trend > 0 ? '+' : ''}{stat.trend}%</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
