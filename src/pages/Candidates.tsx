@@ -16,6 +16,8 @@ interface Application {
   deadline?: string;
   next_step?: string;
   source?: string;
+  team_id?: string;
+  notes?: string;
 }
 
 interface Candidate {
@@ -38,10 +40,26 @@ const Candidates = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewCandidateDialog, setShowNewCandidateDialog] = useState(false);
+  const [teams, setTeams] = useState<any[]>([]);
 
   useEffect(() => {
     fetchCandidates();
+    fetchTeams();
   }, []);
+
+  const fetchTeams = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("teams")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      setTeams(data || []);
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+    }
+  };
 
   const fetchCandidates = async () => {
     try {
@@ -56,7 +74,7 @@ const Candidates = () => {
         (candidatesData || []).map(async (candidate) => {
           const { data: applications, error: appsError } = await supabase
             .from("applications")
-            .select("id, role, status, application_date, deadline, next_step, source")
+            .select("id, role, status, application_date, deadline, next_step, source, team_id, notes")
             .eq("candidate_id", candidate.id)
             .order("application_date", { ascending: false });
 
@@ -146,6 +164,8 @@ const Candidates = () => {
                   key={candidate.id}
                   candidate={candidate}
                   applications={applications}
+                  teams={teams}
+                  onUpdate={fetchCandidates}
                 />
               ))
             )}

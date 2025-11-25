@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +41,7 @@ interface Application {
   next_step?: string;
   source?: string;
   notes?: string;
+  team_id?: string;
 }
 
 interface CandidateCardProps {
@@ -53,6 +55,8 @@ interface CandidateCardProps {
     created_at: string;
   };
   applications: Application[];
+  teams?: any[];
+  onUpdate?: () => void;
 }
 
 const statusLabels: Record<string, string> = {
@@ -87,7 +91,7 @@ const roleColors: Record<string, string> = {
   salgskonsulent: "bg-role-salgskonsulent/10 text-role-salgskonsulent border-role-salgskonsulent/20",
 };
 
-export const CandidateCard = ({ candidate, applications }: CandidateCardProps) => {
+export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }: CandidateCardProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showSoftphone, setShowSoftphone] = useState(false);
@@ -152,9 +156,30 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
       if (error) throw error;
 
       toast.success("Kandidat slettet");
-      window.location.reload();
+      if (onUpdate) {
+        onUpdate();
+      } else {
+        window.location.reload();
+      }
     } catch (error: any) {
       toast.error("Kunne ikke slette kandidat");
+      console.error(error);
+    }
+  };
+
+  const handleTeamChange = async (applicationId: string, newTeamId: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ team_id: newTeamId || null })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Team opdateret!");
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere team");
       console.error(error);
     }
   };
@@ -288,13 +313,18 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
                     className="bg-muted/30 rounded-lg p-3 space-y-2"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge className={roleColors[app.role]} variant="outline">
                           {roleLabels[app.role]}
                         </Badge>
                         <Badge className={statusColors[app.status]} variant="outline">
                           {statusLabels[app.status]}
                         </Badge>
+                        {app.team_id && teams.length > 0 && (
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                            {teams.find(t => t.id === app.team_id)?.name}
+                          </Badge>
+                        )}
                         {index === 0 && (
                           <Badge variant="secondary" className="text-xs">Seneste</Badge>
                         )}
@@ -304,6 +334,32 @@ export const CandidateCard = ({ candidate, applications }: CandidateCardProps) =
                         {format(new Date(app.application_date), "d. MMM yyyy", { locale: da })}
                       </div>
                     </div>
+
+                    {teams.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          Team {app.status === "ansat" && <span className="text-destructive">*</span>}:
+                        </span>
+                        <Select
+                          value={app.team_id || "none"}
+                          onValueChange={(value) => handleTeamChange(app.id, value === "none" ? "" : value)}
+                        >
+                          <SelectTrigger className="h-7 w-auto gap-2 text-xs">
+                            <SelectValue>
+                              {teams.find(t => t.id === app.team_id)?.name || "Vælg team"}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            <SelectItem value="none">Ingen team</SelectItem>
+                            {teams.map(team => (
+                              <SelectItem key={team.id} value={team.id}>
+                                {team.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     {app.next_step && (
                       <div className="text-sm">
