@@ -26,7 +26,7 @@ interface TeamConversion {
   totalHired: number;
   churnedCount: number;
   churnRate: number;
-  totalRevenue: number;
+  avgRevenuePerEmployee: number;
 }
 
 const Dashboard = () => {
@@ -234,14 +234,22 @@ const Dashboard = () => {
 
       if (appsError) throw appsError;
 
-      // Fetch revenue data
+      // Fetch revenue data with application IDs
       const { data: revenueData, error: revenueError } = await supabase
         .from("revenue_data")
         .select("application_id, revenue");
 
       if (revenueError) throw revenueError;
 
-      // Calculate churn and revenue per team
+      // Fetch applications to link revenue to teams
+      const { data: allApplications, error: allAppsError } = await supabase
+        .from("applications")
+        .select("id, team_id")
+        .not("team_id", "is", null);
+
+      if (allAppsError) throw allAppsError;
+
+      // Calculate churn and average revenue per employee per team
       const teamStats: TeamConversion[] = (teams || []).map((team) => {
         const teamHires = hiredApps?.filter(app => app.team_id === team.id) || [];
         const totalHired = teamHires.length;
@@ -250,11 +258,14 @@ const Dashboard = () => {
           ? Math.round((churnedCount / totalHired) * 100) 
           : 0;
 
-        // Calculate total revenue for this team's hires
-        const teamApplicationIds = teamHires.map(app => app);
+        // Calculate total revenue for this team's employees
+        const teamAppIds = allApplications?.filter(app => app.team_id === team.id).map(app => app.id) || [];
         const totalRevenue = revenueData
-          ?.filter(rev => teamHires.some(app => app.team_id === team.id))
+          ?.filter(rev => teamAppIds.includes(rev.application_id))
           .reduce((sum, rev) => sum + (Number(rev.revenue) || 0), 0) || 0;
+
+        // Calculate average revenue per employee
+        const avgRevenuePerEmployee = totalHired > 0 ? Math.round(totalRevenue / totalHired) : 0;
 
         return {
           teamId: team.id,
@@ -262,12 +273,12 @@ const Dashboard = () => {
           totalHired,
           churnedCount,
           churnRate,
-          totalRevenue: Math.round(totalRevenue),
+          avgRevenuePerEmployee,
         };
       });
 
-      // Sort by total revenue descending
-      teamStats.sort((a, b) => b.totalRevenue - a.totalRevenue);
+      // Sort by average revenue per employee descending
+      teamStats.sort((a, b) => b.avgRevenuePerEmployee - a.avgRevenuePerEmployee);
 
       setConversionData(teamStats);
     } catch (error) {
@@ -367,7 +378,7 @@ const Dashboard = () => {
                         <YAxis 
                           className="text-xs"
                           tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          label={{ value: 'Indtjening (kr.)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
+                          label={{ value: 'Gns. indtjening pr. ansat (kr.)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
                         />
                         <Tooltip 
                           contentStyle={{ 
@@ -377,12 +388,12 @@ const Dashboard = () => {
                           }}
                           labelStyle={{ color: 'hsl(var(--foreground))' }}
                           formatter={(value: any, name: string) => {
-                            if (name === "totalRevenue") return [`${value.toLocaleString('da-DK')} kr.`, "Indtjening"];
+                            if (name === "avgRevenuePerEmployee") return [`${value.toLocaleString('da-DK')} kr.`, "Gns. indtjening pr. ansat"];
                             return [value, name];
                           }}
                         />
                         <Bar 
-                          dataKey="totalRevenue" 
+                          dataKey="avgRevenuePerEmployee" 
                           fill="hsl(var(--primary))" 
                           radius={[8, 8, 0, 0]}
                         />
@@ -398,7 +409,7 @@ const Dashboard = () => {
                           <div className="flex-1">
                             <div className="font-medium">{team.teamName}</div>
                             <div className="text-sm text-muted-foreground">
-                              {team.totalHired} ansatte • {team.churnedCount} stoppet • {team.totalRevenue.toLocaleString('da-DK')} kr. indtjening
+                              {team.totalHired} ansatte • {team.churnedCount} stoppet • {team.avgRevenuePerEmployee.toLocaleString('da-DK')} kr./ansat
                             </div>
                           </div>
                           <Badge 
