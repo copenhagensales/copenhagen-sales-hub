@@ -5,10 +5,16 @@ export class TwilioVoiceManager {
   private currentCall: Call | null = null;
   private identity: string;
   private onCallStatusChange?: (status: string, call?: Call) => void;
+  private onDebugUpdate?: (info: { tokenLength?: number; [key: string]: any }) => void;
 
-  constructor(identity: string, onCallStatusChange?: (status: string, call?: Call) => void) {
+  constructor(
+    identity: string, 
+    onCallStatusChange?: (status: string, call?: Call) => void,
+    onDebugUpdate?: (info: { tokenLength?: number; [key: string]: any }) => void
+  ) {
     this.identity = identity;
     this.onCallStatusChange = onCallStatusChange;
+    this.onDebugUpdate = onDebugUpdate;
   }
 
   private async fetchTwilioToken(): Promise<string> {
@@ -51,6 +57,9 @@ export class TwilioVoiceManager {
 
     console.log('[Twilio] ✅ Token received (length:', data.token.length, ')');
     console.log('[Twilio] Token (first 50 chars):', data.token.slice(0, 50), '...');
+
+    // Update debug info with token length
+    this.onDebugUpdate?.({ tokenLength: data.token.length });
 
     return data.token;
   }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, X } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, X, Bug, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TwilioVoiceManager } from '@/utils/TwilioVoice';
 import { supabase } from '@/integrations/supabase/client';
 import { Call } from '@twilio/voice-sdk';
+import { Badge } from '@/components/ui/badge';
 
 interface SoftphoneProps {
   userId: string;
@@ -21,6 +22,17 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
   const [twilioManager, setTwilioManager] = useState<TwilioVoiceManager | null>(null);
   const [currentCall, setCurrentCall] = useState<Call | null>(null);
   const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+  const [showDebug, setShowDebug] = useState(true);
+  
+  // Debug state
+  const [debugInfo, setDebugInfo] = useState({
+    tokenStatus: 'not_fetched',
+    tokenLength: 0,
+    deviceStatus: 'not_created',
+    lastError: null as string | null,
+    lastErrorTime: null as Date | null,
+  });
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -29,24 +41,56 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
         console.log('=== Starting Softphone Initialization ===');
         console.log('User ID:', userId);
         
-        const manager = new TwilioVoiceManager(userId, (status, call) => {
-          console.log('Call status changed:', status);
-          setCallStatus(status);
-          if (call) {
-            setCurrentCall(call);
+        setDebugInfo(prev => ({ ...prev, tokenStatus: 'fetching' }));
+        
+        const manager = new TwilioVoiceManager(
+          userId, 
+          (status, call) => {
+            console.log('Call status changed:', status);
+            setCallStatus(status);
+            
+            // Update device status in debug info
+            if (status === 'ready') {
+              setDebugInfo(prev => ({ ...prev, deviceStatus: 'registered' }));
+            } else if (status === 'error') {
+              setDebugInfo(prev => ({ 
+                ...prev, 
+                deviceStatus: 'error',
+                lastError: 'Device error occurred',
+                lastErrorTime: new Date()
+              }));
+            }
+            
+            if (call) {
+              setCurrentCall(call);
+            }
+            if (status === 'active') {
+              setCallStartTime(new Date());
+            }
+            if (status === 'disconnected') {
+              handleCallEnd();
+            }
+          },
+          (debugUpdate) => {
+            // Update debug info from TwilioVoiceManager
+            if (debugUpdate.tokenLength !== undefined) {
+              setDebugInfo(prev => ({ ...prev, tokenLength: debugUpdate.tokenLength }));
+            }
           }
-          if (status === 'active') {
-            setCallStartTime(new Date());
-          }
-          if (status === 'disconnected') {
-            handleCallEnd();
-          }
-        });
+        );
 
         console.log('Calling manager.initialize()...');
+        setDebugInfo(prev => ({ ...prev, deviceStatus: 'creating' }));
+        
         await manager.initialize();
         console.log('Manager initialized successfully');
         setTwilioManager(manager);
+        
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          tokenStatus: 'fetched',
+          deviceStatus: 'created'
+        }));
       } catch (error) {
         console.error('[Softphone] === Error Initializing Softphone ===');
         console.error('[Softphone] Error type:', error?.constructor?.name);
@@ -54,6 +98,15 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
         console.error('[Softphone] Full error:', error);
         
         const errorMsg = error instanceof Error ? error.message : 'Ukendt fejl';
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          tokenStatus: 'error',
+          deviceStatus: 'error',
+          lastError: errorMsg,
+          lastErrorTime: new Date()
+        }));
+        
         toast({
           title: 'Telefon kunne ikke initialiseres',
           description: errorMsg,
@@ -176,6 +229,80 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
       <div className="space-y-4">
         <div className="text-sm text-muted-foreground text-center">
           {getStatusText()}
+        </div>
+
+        {/* Debug Panel */}
+        <div className="border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="w-full px-3 py-2 bg-muted/50 flex items-center justify-between text-xs font-medium hover:bg-muted transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Bug className="h-3 w-3" />
+              Debug Info
+            </div>
+            {showDebug ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+          
+          {showDebug && (
+            <div className="p-3 space-y-2 text-xs bg-muted/20">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Token:</span>
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    variant={
+                      debugInfo.tokenStatus === 'fetched' ? 'default' : 
+                      debugInfo.tokenStatus === 'error' ? 'destructive' : 
+                      'secondary'
+                    }
+                    className="text-xs"
+                  >
+                    {debugInfo.tokenStatus}
+                  </Badge>
+                  {debugInfo.tokenLength > 0 && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {debugInfo.tokenLength} chars
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Device:</span>
+                <Badge 
+                  variant={
+                    debugInfo.deviceStatus === 'registered' ? 'default' : 
+                    debugInfo.deviceStatus === 'error' ? 'destructive' : 
+                    'secondary'
+                  }
+                  className="text-xs"
+                >
+                  {debugInfo.deviceStatus}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Call Status:</span>
+                <Badge variant="outline" className="text-xs">
+                  {callStatus}
+                </Badge>
+              </div>
+              
+              {debugInfo.lastError && (
+                <div className="pt-2 border-t">
+                  <div className="text-muted-foreground mb-1">Seneste fejl:</div>
+                  <div className="text-destructive break-words text-[10px] bg-destructive/10 p-2 rounded">
+                    {debugInfo.lastError}
+                  </div>
+                  {debugInfo.lastErrorTime && (
+                    <div className="text-muted-foreground mt-1 text-[10px]">
+                      {debugInfo.lastErrorTime.toLocaleTimeString('da-DK')}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {callStatus === 'incoming' && currentCall && (
