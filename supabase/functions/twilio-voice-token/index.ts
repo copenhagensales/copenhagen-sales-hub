@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import twilio from "npm:twilio@4.19.0";
+import twilio from "https://esm.sh/twilio@4.19.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,9 +71,9 @@ serve(async (req) => {
 
     // Create Access Token
     const token = new AccessToken(
-      TWILIO_ACCOUNT_SID,
-      TWILIO_API_KEY_SID,
-      TWILIO_API_KEY_SECRET,
+      TWILIO_ACCOUNT_SID!,
+      TWILIO_API_KEY_SID!,
+      TWILIO_API_KEY_SECRET!,
       { identity: identity }
     );
 
