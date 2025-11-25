@@ -5,12 +5,20 @@ export class TwilioVoiceManager {
   private currentCall: Call | null = null;
   private identity: string;
   private onCallStatusChange?: (status: string, call?: Call) => void;
-  private onDebugUpdate?: (info: { tokenLength?: number; [key: string]: any }) => void;
+  private onDebugUpdate?: (info: { 
+    tokenLength?: number; 
+    deviceError?: string;
+    [key: string]: any 
+  }) => void;
 
   constructor(
     identity: string, 
     onCallStatusChange?: (status: string, call?: Call) => void,
-    onDebugUpdate?: (info: { tokenLength?: number; [key: string]: any }) => void
+    onDebugUpdate?: (info: { 
+      tokenLength?: number; 
+      deviceError?: string;
+      [key: string]: any 
+    }) => void
   ) {
     this.identity = identity;
     this.onCallStatusChange = onCallStatusChange;
@@ -82,12 +90,25 @@ export class TwilioVoiceManager {
 
       // Initialize Twilio Device
       console.log('[Twilio] 🔧 Creating Twilio Device...');
-      this.device = new Device(token, {
-        logLevel: 1,
-        codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
-      });
-
-      console.log('[Twilio] ✅ Device object created:', this.device);
+      
+      try {
+        this.device = new Device(token, {
+          logLevel: 1,
+          codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
+        });
+        
+        console.log('[Twilio] ✅ Device object created:', this.device);
+      } catch (deviceError) {
+        console.error('[Twilio] ❌ Device.create failed:', deviceError);
+        const errorMsg = deviceError instanceof Error ? deviceError.message : String(deviceError);
+        
+        // Update debug info
+        this.onDebugUpdate?.({ 
+          deviceError: `Device creation failed: ${errorMsg}`
+        });
+        
+        throw new Error(`Failed to create Twilio Device: ${errorMsg}`);
+      }
 
       // Set up event listeners
       this.device.on('registered', () => {
@@ -105,21 +126,30 @@ export class TwilioVoiceManager {
         console.error('[Twilio] Full error object:', error);
         console.error('[Twilio] Error details:', JSON.stringify(error, null, 2));
         
+        // Build detailed error message
+        let errorDetails = '';
+        
         // Check for specific error codes
         if (error?.code === 20101) {
           console.error('[Twilio] ❌ AccessTokenInvalid - Token was rejected by Twilio');
-          console.error('[Twilio] This usually means:');
-          console.error('[Twilio]   1. JWT signature is invalid (wrong API Key Secret)');
-          console.error('[Twilio]   2. JWT payload structure is incorrect');
-          console.error('[Twilio]   3. Credentials are from different Twilio accounts/subaccounts');
-          console.error('[Twilio]   4. Using Test credentials mixed with Live credentials');
+          errorDetails = 'AccessTokenInvalid: JWT signature or structure is invalid. Check that credentials are from same Twilio account.';
         } else if (error?.code === 31204) {
           console.error('[Twilio] ❌ JWT is invalid - Structure or format error');
+          errorDetails = 'JWT invalid: Token structure or format error';
+        } else {
+          errorDetails = error?.explanation || error?.description || 'Unknown Twilio error';
         }
         
+        const errorMsg = `Twilio error ${error?.code || 'Unknown'}: ${error?.message || 'No message'}`;
+        const fullErrorMsg = `${errorMsg}\n${errorDetails}`;
+        
+        // Update debug info
+        this.onDebugUpdate?.({ 
+          deviceError: fullErrorMsg
+        });
+        
         // Show user-friendly error alert
-        const errorMsg = `Twilio error: ${error?.code || 'Unknown'} - ${error?.message || 'No message'}`;
-        alert(errorMsg);
+        alert(fullErrorMsg);
         
         this.onCallStatusChange?.('error');
       });
