@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft,
   Mail,
@@ -183,6 +184,23 @@ const CandidateProfile = () => {
     return "text-status-rejected";
   };
 
+  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ status: newStatus as any })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Status opdateret!");
+      fetchCandidateData();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere status");
+      console.error(error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen">
@@ -333,14 +351,36 @@ const CandidateProfile = () => {
                   <Card key={app.id}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <Badge className={roleColors[app.role]}>
                               {roleLabels[app.role]}
                             </Badge>
-                            <Badge className={statusColors[app.status]}>
-                              {statusLabels[app.status]}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">Status:</span>
+                              <Select
+                                value={app.status}
+                                onValueChange={(value) => handleStatusChange(app.id, value)}
+                              >
+                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                  <SelectValue>
+                                    <Badge className={statusColors[app.status]}>
+                                      {statusLabels[app.status]}
+                                    </Badge>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover">
+                                  <SelectItem value="ny">Ny</SelectItem>
+                                  <SelectItem value="telefon_screening">Telefon-screening</SelectItem>
+                                  <SelectItem value="case_rollespil">Case/Rollespil</SelectItem>
+                                  <SelectItem value="interview">Interview</SelectItem>
+                                  <SelectItem value="tilbud">Tilbud</SelectItem>
+                                  <SelectItem value="ansat">Ansat</SelectItem>
+                                  <SelectItem value="afslag">Afslag</SelectItem>
+                                  <SelectItem value="ghosted_cold">Ghosted/Cold</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                             {app.source && (
                               <Badge variant="outline">{app.source}</Badge>
                             )}
