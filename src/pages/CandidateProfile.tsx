@@ -529,9 +529,16 @@ const CandidateProfile = () => {
                       <>
                         <span className="font-medium">Ansøgningsdatoer:</span>
                         {applications.map((app, index) => (
-                          <span key={app.id} className="text-sm">
-                            {index + 1}. {format(new Date(app.application_date), "d. MMMM yyyy", { locale: da })}
-                          </span>
+                          <div key={app.id} className="flex items-center gap-2 text-sm">
+                            <span>
+                              {index + 1}. {format(new Date(app.application_date), "d. MMMM yyyy", { locale: da })}
+                            </span>
+                            {index === 0 && (
+                              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                Nyeste
+                              </Badge>
+                            )}
+                          </div>
                         ))}
                       </>
                     ) : (
