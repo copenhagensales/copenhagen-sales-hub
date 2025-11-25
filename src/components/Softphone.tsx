@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, X, Bug, ChevronDown, ChevronUp } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, X, Bug, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
   const [currentCall, setCurrentCall] = useState<Call | null>(null);
   const [callStartTime, setCallStartTime] = useState<Date | null>(null);
   const [showDebug, setShowDebug] = useState(true);
+  const [isTestingCredentials, setIsTestingCredentials] = useState(false);
   
   // Debug state
   const [debugInfo, setDebugInfo] = useState({
@@ -175,6 +176,80 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
     }
   };
 
+  const testCredentials = async () => {
+    setIsTestingCredentials(true);
+    console.log('[Softphone] Testing Twilio credentials...');
+
+    try {
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-token`;
+      
+      console.log('[Test] Calling token endpoint:', functionUrl);
+      
+      const res = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('[Test] Response status:', res.status);
+      
+      const text = await res.text();
+      console.log('[Test] Response text:', text);
+
+      if (!res.ok) {
+        const errorData = text ? JSON.parse(text) : {};
+        console.error('[Test] ❌ Credential test failed:', errorData);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastError: errorData.error || `HTTP ${res.status}`,
+          lastErrorTime: new Date()
+        }));
+
+        toast({
+          title: 'Credentials test fejlede',
+          description: errorData.details ? errorData.details.join(', ') : errorData.error || `HTTP ${res.status}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const data = JSON.parse(text);
+      console.log('[Test] ✅ Token received, length:', data.token?.length);
+
+      toast({
+        title: 'Credentials test lykkedes!',
+        description: `Token genereret (${data.token?.length} chars)`,
+      });
+
+      setDebugInfo(prev => ({
+        ...prev,
+        tokenStatus: 'verified',
+        tokenLength: data.token?.length || 0,
+        lastError: null
+      }));
+
+    } catch (error) {
+      console.error('[Test] ❌ Error testing credentials:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      
+      setDebugInfo(prev => ({
+        ...prev,
+        lastError: errorMsg,
+        lastErrorTime: new Date()
+      }));
+
+      toast({
+        title: 'Credentials test fejlede',
+        description: errorMsg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTestingCredentials(false);
+    }
+  };
+
   const hangup = () => {
     twilioManager?.hangup();
   };
@@ -301,6 +376,19 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
                   )}
                 </div>
               )}
+              
+              <div className="pt-2 border-t">
+                <Button
+                  onClick={testCredentials}
+                  disabled={isTestingCredentials}
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs"
+                >
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  {isTestingCredentials ? 'Tester...' : 'Test Credentials'}
+                </Button>
+              </div>
             </div>
           )}
         </div>
