@@ -609,11 +609,12 @@ const CandidateProfile = () => {
                         </div>
                       )}
 
-                      {app.notes && (
-                        <div className="text-sm">
-                          <strong>Noter:</strong> {app.notes}
-                        </div>
-                      )}
+                       {app.notes && (
+                         <div className="mb-3 p-3 bg-muted/50 rounded">
+                           <span className="font-medium text-sm">Ansøgningstekst:</span>
+                           <p className="text-sm mt-1 whitespace-pre-wrap">{app.notes}</p>
+                         </div>
+                       )}
 
                       {app.rejection_reason && (
                         <div className="mt-3 p-3 bg-destructive/10 rounded text-sm">
