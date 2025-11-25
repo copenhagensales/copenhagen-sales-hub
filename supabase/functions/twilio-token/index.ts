@@ -49,9 +49,9 @@ serve(async (req) => {
       throw new Error('Invalid TWILIO_TWIML_APP_SID format (must start with AP)');
     }
 
-    // Generate identity for this agent session
-    const identity = `agent-${Date.now()}`;
-    console.log('[Twilio Token] Generated identity:', identity);
+    // Use fixed identity "agent" for incoming calls to work
+    const identity = "agent";
+    console.log('[Twilio Token] Using identity:', identity);
 
     // Create JWT payload for Twilio Voice
     const now = Math.floor(Date.now() / 1000);
