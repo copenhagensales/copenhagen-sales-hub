@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, TrendingUp, TrendingDown, DollarSign, Calendar, Users } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, DollarSign, Calendar, Users, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ interface Employee {
   team?: {
     name: string;
   };
+  revenue_data?: RevenueData[];
 }
 
 interface RevenueData {
@@ -112,7 +113,20 @@ const Employees = () => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setEmployees(data || []);
+      
+      // Fetch revenue data for all employees
+      const employeesWithRevenue = await Promise.all(
+        (data || []).map(async (emp) => {
+          const { data: revenue } = await supabase
+            .from("revenue_data")
+            .select("*")
+            .eq("application_id", emp.id);
+          
+          return { ...emp, revenue_data: revenue || [] };
+        })
+      );
+      
+      setEmployees(employeesWithRevenue as any);
     } catch (error: any) {
       toast.error("Kunne ikke hente ansatte");
       console.error(error);
@@ -195,6 +209,22 @@ const Employees = () => {
     salgskonsulent: "Salgskonsulent",
   };
 
+  // Check if revenue data is overdue based on hire date
+  const isRevenueOverdue = (emp: Employee, period: number) => {
+    if (!emp.hired_date || emp.employment_ended_date) return false;
+    
+    const hiredDate = new Date(emp.hired_date);
+    const today = new Date();
+    const daysSinceHired = Math.floor((today.getTime() - hiredDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const hasRevenue = emp.revenue_data?.some(r => r.period === period);
+    return daysSinceHired >= period && !hasRevenue;
+  };
+
+  const getRevenueForPeriod = (emp: Employee, period: number) => {
+    return emp.revenue_data?.find(r => r.period === period);
+  };
+
   const filteredEmployees = employees.filter((emp) => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
@@ -205,6 +235,16 @@ const Employees = () => {
     const matchesTeam = filterTeam === "all" || emp.team_id === filterTeam;
 
     return matchesSearch && matchesTeam;
+  }).sort((a, b) => {
+    // Sort by overdue status first (overdue employees at top)
+    const aOverdue = isRevenueOverdue(a, 30) || isRevenueOverdue(a, 60) || isRevenueOverdue(a, 90);
+    const bOverdue = isRevenueOverdue(b, 30) || isRevenueOverdue(b, 60) || isRevenueOverdue(b, 90);
+    
+    if (aOverdue && !bOverdue) return -1;
+    if (!aOverdue && bOverdue) return 1;
+    
+    // Then by hire date (newest first)
+    return new Date(b.hired_date).getTime() - new Date(a.hired_date).getTime();
   });
 
   const activeCount = employees.filter((e) => !e.employment_ended_date).length;
@@ -321,9 +361,18 @@ const Employees = () => {
                 </CardContent>
               </Card>
             ) : (
-              filteredEmployees.map((emp) => (
-                <Card key={emp.id}>
+              filteredEmployees.map((emp) => {
+                const hasOverdueRevenue = isRevenueOverdue(emp, 30) || isRevenueOverdue(emp, 60) || isRevenueOverdue(emp, 90);
+                
+                return (
+                <Card key={emp.id} className={hasOverdueRevenue ? "border-destructive border-2" : ""}>
                   <CardContent className="p-6">
+                    {hasOverdueRevenue && (
+                      <div className="mb-4 p-2 bg-destructive/10 text-destructive text-sm font-medium rounded flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Mangler dækningsbidrag data
+                      </div>
+                    )}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
@@ -347,7 +396,7 @@ const Employees = () => {
                           )}
                         </div>
 
-                        <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="text-sm text-muted-foreground space-y-1 mb-3">
                           <div>Email: {emp.candidate.email}</div>
                           <div>Telefon: {emp.candidate.phone}</div>
                           <div>
@@ -364,10 +413,41 @@ const Employees = () => {
                             </>
                           )}
                         </div>
+
+                        {/* Revenue summary on card */}
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          <div className={`p-2 rounded border ${isRevenueOverdue(emp, 30) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}>
+                            <div className="text-xs text-muted-foreground mb-1">30 dage</div>
+                            <div className="font-semibold">
+                              {getRevenueForPeriod(emp, 30) 
+                                ? `${getRevenueForPeriod(emp, 30)!.revenue.toLocaleString()} kr`
+                                : isRevenueOverdue(emp, 30) ? '⚠️ Mangler' : '-'
+                              }
+                            </div>
+                          </div>
+                          <div className={`p-2 rounded border ${isRevenueOverdue(emp, 60) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}>
+                            <div className="text-xs text-muted-foreground mb-1">60 dage</div>
+                            <div className="font-semibold">
+                              {getRevenueForPeriod(emp, 60) 
+                                ? `${getRevenueForPeriod(emp, 60)!.revenue.toLocaleString()} kr`
+                                : isRevenueOverdue(emp, 60) ? '⚠️ Mangler' : '-'
+                              }
+                            </div>
+                          </div>
+                          <div className={`p-2 rounded border ${isRevenueOverdue(emp, 90) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}>
+                            <div className="text-xs text-muted-foreground mb-1">90 dage</div>
+                            <div className="font-semibold">
+                              {getRevenueForPeriod(emp, 90) 
+                                ? `${getRevenueForPeriod(emp, 90)!.revenue.toLocaleString()} kr`
+                                : isRevenueOverdue(emp, 90) ? '⚠️ Mangler' : '-'
+                              }
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="flex gap-2">
-                          <Button
+                        <Button
                           size="sm"
                           variant="outline"
                           onClick={() => {
@@ -396,7 +476,7 @@ const Employees = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+              )})
             )}
           </div>
         </div>
