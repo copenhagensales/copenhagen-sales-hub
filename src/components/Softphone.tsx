@@ -71,6 +71,14 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
     };
   }, [userId]);
 
+  // Auto-call when phone is ready and initialPhoneNumber is provided
+  useEffect(() => {
+    if (callStatus === 'ready' && initialPhoneNumber && twilioManager && !currentCall) {
+      console.log('Auto-calling initial phone number:', initialPhoneNumber);
+      makeCall();
+    }
+  }, [callStatus, initialPhoneNumber, twilioManager]);
+
   const handleCallEnd = async () => {
     if (!currentCall || !callStartTime) return;
 

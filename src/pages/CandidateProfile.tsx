@@ -91,6 +91,7 @@ const CandidateProfile = () => {
   const [showNewApplicationDialog, setShowNewApplicationDialog] = useState(false);
   const [showEditCandidateDialog, setShowEditCandidateDialog] = useState(false);
   const [showSoftphone, setShowSoftphone] = useState(false);
+  const [softphoneInitialNumber, setSoftphoneInitialNumber] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
 
   useEffect(() => {
@@ -345,7 +346,10 @@ const CandidateProfile = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowSoftphone(true)}
+                onClick={() => {
+                  setSoftphoneInitialNumber(candidate.phone);
+                  setShowSoftphone(true);
+                }}
               >
                 <Phone className="mr-2 h-4 w-4" />
                 Ring op
@@ -370,8 +374,11 @@ const CandidateProfile = () => {
           {showSoftphone && userId && (
             <Softphone
               userId={userId}
-              initialPhoneNumber={candidate.phone}
-              onClose={() => setShowSoftphone(false)}
+              initialPhoneNumber={softphoneInitialNumber}
+              onClose={() => {
+                setShowSoftphone(false);
+                setSoftphoneInitialNumber('');
+              }}
             />
           )}
 
@@ -391,9 +398,15 @@ const CandidateProfile = () => {
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Phone className="h-4 w-4" />
-                  <a href={`tel:${candidate.phone}`} className="hover:text-primary">
+                  <button
+                    onClick={() => {
+                      setSoftphoneInitialNumber(candidate.phone);
+                      setShowSoftphone(true);
+                    }}
+                    className="hover:text-primary hover:underline cursor-pointer text-left"
+                  >
                     {candidate.phone}
-                  </a>
+                  </button>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Calendar className="h-4 w-4" />
