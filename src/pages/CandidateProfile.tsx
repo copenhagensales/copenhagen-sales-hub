@@ -8,7 +8,6 @@ import { Softphone } from "@/components/Softphone";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
 import { QuickNotesSidebar } from "@/components/QuickNotesSidebar";
-import { CandidateSummaryCard } from "@/components/CandidateSummaryCard";
 import { CommunicationTimeline } from "@/components/CommunicationTimeline";
 import { ScheduleInterviewDialog } from "@/components/ScheduleInterviewDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -484,12 +483,6 @@ const CandidateProfile = () => {
               </Button>
             </div>
           </div>
-
-          {/* Summary Card */}
-          <CandidateSummaryCard
-            latestNote={candidateNotes[0]}
-            latestApplication={applications[0]}
-          />
 
           {/* Main content grid with sidebar */}
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6 mt-6">
