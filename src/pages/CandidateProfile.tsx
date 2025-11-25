@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
+import { NewApplicationDialog } from "@/components/NewApplicationDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
   PhoneCall,
   TrendingUp,
   AlertCircle,
+  Plus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
@@ -77,6 +79,7 @@ const CandidateProfile = () => {
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [performanceReviews, setPerformanceReviews] = useState<PerformanceReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showNewApplicationDialog, setShowNewApplicationDialog] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -210,14 +213,46 @@ const CandidateProfile = () => {
       <Sidebar />
       <div className="flex-1 overflow-auto">
         <div className="p-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/candidates")}
-            className="mb-6"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbage til kandidater
-          </Button>
+          <div className="flex items-center justify-between mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/candidates")}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Tilbage til kandidater
+            </Button>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => window.open(`mailto:${candidate.email}`)}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Send email
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.open(`tel:${candidate.phone}`)}
+              >
+                <Phone className="mr-2 h-4 w-4" />
+                Ring op
+              </Button>
+              <Button
+                onClick={() => setShowNewApplicationDialog(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Ny ansøgning
+              </Button>
+            </div>
+          </div>
+
+          <NewApplicationDialog
+            open={showNewApplicationDialog}
+            onOpenChange={setShowNewApplicationDialog}
+            candidateId={candidate.id}
+            candidateName={`${candidate.first_name} ${candidate.last_name}`}
+            onSuccess={fetchCandidateData}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <Card className="lg:col-span-2">
