@@ -565,31 +565,32 @@ const CandidateProfile = () => {
                             </div>
                           </div>
 
-                          {/* Team selector - shown when status is ansat (required) or when status is about to be ansat */}
-                          {app.status === "ansat" && (
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm text-muted-foreground">Team <span className="text-destructive">*</span>:</span>
-                              <Select
-                                value={app.team_id || ""}
-                                onValueChange={(value) => handleTeamChange(app.id, value)}
-                              >
-                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                                  <SelectValue>
-                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                      {teams.find(t => t.id === app.team_id)?.name || "Vælg team *"}
-                                    </Badge>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover">
-                                  {teams.map(team => (
-                                    <SelectItem key={team.id} value={team.id}>
-                                      {team.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
+                          {/* Team selector - always visible */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm text-muted-foreground">
+                              Team {app.status === "ansat" && <span className="text-destructive">*</span>}:
+                            </span>
+                            <Select
+                              value={app.team_id || ""}
+                              onValueChange={(value) => handleTeamChange(app.id, value)}
+                            >
+                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                <SelectValue>
+                                  <Badge variant="outline" className={app.team_id ? "bg-primary/10 text-primary border-primary/20" : ""}>
+                                    {teams.find(t => t.id === app.team_id)?.name || "Vælg team"}
+                                  </Badge>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="">Ingen team</SelectItem>
+                                {teams.map(team => (
+                                  <SelectItem key={team.id} value={team.id}>
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             {format(new Date(app.application_date), "d. MMMM yyyy 'kl.' HH:mm", { locale: da })}
                           </div>
