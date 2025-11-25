@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { NewApplicationDialog } from "@/components/NewApplicationDialog";
+import { EditCandidateDialog } from "@/components/EditCandidateDialog";
 import { Softphone } from "@/components/Softphone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ import {
   TrendingUp,
   AlertCircle,
   Plus,
+  Edit,
 } from "lucide-react";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
@@ -87,6 +89,7 @@ const CandidateProfile = () => {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewApplicationDialog, setShowNewApplicationDialog] = useState(false);
+  const [showEditCandidateDialog, setShowEditCandidateDialog] = useState(false);
   const [showSoftphone, setShowSoftphone] = useState(false);
   const [userId, setUserId] = useState<string>('');
 
@@ -326,6 +329,13 @@ const CandidateProfile = () => {
             </Button>
 
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowEditCandidateDialog(true)}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Rediger kandidat
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => window.open(`mailto:${candidate.email}`)}
@@ -678,6 +688,32 @@ const CandidateProfile = () => {
           </Tabs>
         </div>
       </div>
+
+      {candidate && (
+        <EditCandidateDialog
+          candidate={candidate}
+          open={showEditCandidateDialog}
+          onOpenChange={setShowEditCandidateDialog}
+          onSuccess={fetchCandidateData}
+        />
+      )}
+
+      <NewApplicationDialog
+        open={showNewApplicationDialog}
+        onOpenChange={setShowNewApplicationDialog}
+        candidateId={id!}
+        candidateName={`${candidate?.first_name} ${candidate?.last_name}`}
+        onSuccess={() => {
+          fetchCandidateData();
+        }}
+      />
+
+      {showSoftphone && (
+        <Softphone
+          userId={userId}
+          onClose={() => setShowSoftphone(false)}
+        />
+      )}
     </div>
   );
 };
