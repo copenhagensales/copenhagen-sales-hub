@@ -200,6 +200,15 @@ const CandidateProfile = () => {
 
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
     try {
+      // If changing to "ansat", check if team is selected
+      if (newStatus === "ansat") {
+        const application = applications.find(app => app.id === applicationId);
+        if (!application?.team_id) {
+          toast.error("Du skal vælge et team før du kan sætte status til Ansat");
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from("applications")
         .update({ status: newStatus as any })
@@ -494,23 +503,22 @@ const CandidateProfile = () => {
                             </div>
                           </div>
 
-                          {/* Team selector for hired candidates */}
+                          {/* Team selector - shown when status is ansat (required) or when status is about to be ansat */}
                           {app.status === "ansat" && (
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm text-muted-foreground">Team:</span>
+                              <span className="text-sm text-muted-foreground">Team <span className="text-destructive">*</span>:</span>
                               <Select
-                                value={app.team_id || "none"}
-                                onValueChange={(value) => handleTeamChange(app.id, value === "none" ? "" : value)}
+                                value={app.team_id || ""}
+                                onValueChange={(value) => handleTeamChange(app.id, value)}
                               >
                                 <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
                                   <SelectValue>
                                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                      {teams.find(t => t.id === app.team_id)?.name || "Vælg team"}
+                                      {teams.find(t => t.id === app.team_id)?.name || "Vælg team *"}
                                     </Badge>
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-popover">
-                                  <SelectItem value="none">Intet team</SelectItem>
                                   {teams.map(team => (
                                     <SelectItem key={team.id} value={team.id}>
                                       {team.name}
