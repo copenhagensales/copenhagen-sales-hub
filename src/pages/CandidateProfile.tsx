@@ -544,11 +544,6 @@ const CandidateProfile = () => {
                   <div className="text-sm text-muted-foreground mb-1">Total ansøgninger</div>
                   <div className="text-2xl font-bold">{applications.length}</div>
                 </div>
-                <Separator />
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Kommunikationer</div>
-                  <div className="text-2xl font-bold">{communications.length}</div>
-                </div>
                 {performanceReviews.length > 0 && (
                   <>
                     <Separator />
