@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
+import { useSmsNotifications } from "@/hooks/useSmsNotifications";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Candidates from "./pages/Candidates";
@@ -19,6 +20,11 @@ const queryClient = new QueryClient();
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Enable SMS notifications when user is logged in
+  if (session) {
+    useSmsNotifications();
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
