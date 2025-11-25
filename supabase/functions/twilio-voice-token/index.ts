@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { encodeBase64Url } from "https://deno.land/std@0.224.0/encoding/base64url.ts";
+import twilio from "npm:twilio@4.19.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,71 +48,46 @@ serve(async (req) => {
     // Get user identity from request
     const { identity } = await req.json();
     if (!identity) {
-      throw new Error('Identity is required');
+      return new Response(
+        JSON.stringify({ error: 'Identity is required' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     console.log('Generating access token for identity:', identity);
-    console.log('Using API Key SID:', TWILIO_API_KEY_SID);
-    console.log('Using Account SID:', TWILIO_ACCOUNT_SID);
-    console.log('Using TwiML App SID:', TWILIO_TWIML_APP_SID);
 
-    // Create JWT token manually for Twilio Voice
-    const now = Math.floor(Date.now() / 1000);
-    const exp = now + 3600; // 1 hour expiration
+    // Use Twilio's official library to generate the token
+    const AccessToken = twilio.jwt.AccessToken;
+    const VoiceGrant = AccessToken.VoiceGrant;
 
-    const header = {
-      cty: "twilio-fpa;v=1",
-      typ: "JWT",
-      alg: "HS256"
-    };
+    // Create Voice Grant
+    const voiceGrant = new VoiceGrant({
+      outgoingApplicationSid: TWILIO_TWIML_APP_SID,
+      incomingAllow: true,
+    });
 
-    const payload = {
-      jti: `${TWILIO_API_KEY_SID}-${now}`,
-      iss: TWILIO_API_KEY_SID,
-      sub: TWILIO_ACCOUNT_SID,
-      exp: exp,
-      grants: {
-        identity: identity,
-        voice: {
-          incoming: {
-            allow: true
-          },
-          outgoing: {
-            application_sid: TWILIO_TWIML_APP_SID
-          }
-        }
-      }
-    };
-
-    console.log('JWT Payload:', JSON.stringify(payload, null, 2));
-
-    // Base64URL encode using Deno standard library
-    const encoder = new TextEncoder();
-    const encodedHeader = encodeBase64Url(encoder.encode(JSON.stringify(header)));
-    const encodedPayload = encodeBase64Url(encoder.encode(JSON.stringify(payload)));
-    const signatureInput = `${encodedHeader}.${encodedPayload}`;
-
-    // Create HMAC signature
-    const keyData = encoder.encode(TWILIO_API_KEY_SECRET);
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
+    // Create Access Token
+    const token = new AccessToken(
+      TWILIO_ACCOUNT_SID,
+      TWILIO_API_KEY_SID,
+      TWILIO_API_KEY_SECRET,
+      { identity: identity }
     );
 
-    const signatureData = encoder.encode(signatureInput);
-    const signature = await crypto.subtle.sign('HMAC', key, signatureData);
-    const encodedSignature = encodeBase64Url(new Uint8Array(signature));
+    token.addGrant(voiceGrant);
 
-    const token = `${signatureInput}.${encodedSignature}`;
+    // Generate JWT
+    const jwt = token.toJwt();
 
-    console.log('Generated token (first 50 chars):', token.substring(0, 50));
     console.log('Access token generated successfully');
+    console.log('Token length:', jwt.length);
+    console.log('Token first 50 chars:', jwt.substring(0, 50));
 
     return new Response(
-      JSON.stringify({ token }),
+      JSON.stringify({ token: jwt }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
