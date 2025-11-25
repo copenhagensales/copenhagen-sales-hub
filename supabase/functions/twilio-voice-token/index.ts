@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { encodeBase64Url } from "https://deno.land/std@0.224.0/encoding/base64url.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,35 +58,13 @@ serve(async (req) => {
       }
     };
 
-    // Base64URL encode helper
-    const base64url = (input: string | Uint8Array) => {
-      let binary;
-      if (typeof input === 'string') {
-        binary = new TextEncoder().encode(input);
-      } else {
-        binary = input;
-      }
-      
-      // Convert to base64
-      let base64 = '';
-      const bytes = new Uint8Array(binary);
-      const len = bytes.length;
-      for (let i = 0; i < len; i++) {
-        base64 += String.fromCharCode(bytes[i]);
-      }
-      
-      return btoa(base64)
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-    };
-
-    const encodedHeader = base64url(JSON.stringify(header));
-    const encodedPayload = base64url(JSON.stringify(payload));
+    // Base64URL encode using Deno standard library
+    const encoder = new TextEncoder();
+    const encodedHeader = encodeBase64Url(encoder.encode(JSON.stringify(header)));
+    const encodedPayload = encodeBase64Url(encoder.encode(JSON.stringify(payload)));
     const signatureInput = `${encodedHeader}.${encodedPayload}`;
 
     // Create HMAC signature
-    const encoder = new TextEncoder();
     const keyData = encoder.encode(TWILIO_API_KEY_SECRET);
     const key = await crypto.subtle.importKey(
       'raw',
@@ -97,7 +76,7 @@ serve(async (req) => {
 
     const signatureData = encoder.encode(signatureInput);
     const signature = await crypto.subtle.sign('HMAC', key, signatureData);
-    const encodedSignature = base64url(new Uint8Array(signature));
+    const encodedSignature = encodeBase64Url(new Uint8Array(signature));
 
     const token = `${signatureInput}.${encodedSignature}`;
 
