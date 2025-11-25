@@ -24,6 +24,12 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
   const [callStartTime, setCallStartTime] = useState<Date | null>(null);
   const [showDebug, setShowDebug] = useState(true);
   const [isTestingCredentials, setIsTestingCredentials] = useState(false);
+  const [incomingCallCandidate, setIncomingCallCandidate] = useState<{
+    name: string;
+    phone: string;
+    role?: string;
+    applicationId?: string;
+  } | null>(null);
   
   // Debug state
   const [debugInfo, setDebugInfo] = useState({
@@ -35,6 +41,65 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
   });
   
   const { toast } = useToast();
+
+  const lookupCandidate = async (phoneNumber: string) => {
+    try {
+      console.log('Looking up candidate for phone:', phoneNumber);
+      
+      // Clean phone number for comparison (remove +, spaces, etc.)
+      const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
+      
+      // Find candidate by phone number
+      const { data: candidates, error: candidateError } = await supabase
+        .from('candidates')
+        .select('id, first_name, last_name, phone')
+        .ilike('phone', `%${cleanNumber.slice(-8)}%`) // Match last 8 digits
+        .limit(1);
+
+      if (candidateError) {
+        console.error('Error looking up candidate:', candidateError);
+        return;
+      }
+
+      if (candidates && candidates.length > 0) {
+        const candidate = candidates[0];
+        
+        // Get the latest application for this candidate
+        const { data: applications } = await supabase
+          .from('applications')
+          .select('id, role')
+          .eq('candidate_id', candidate.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const application = applications?.[0];
+
+        setIncomingCallCandidate({
+          name: `${candidate.first_name} ${candidate.last_name}`,
+          phone: phoneNumber,
+          role: application?.role,
+          applicationId: application?.id,
+        });
+
+        toast({
+          title: '📞 Indgående opkald',
+          description: `${candidate.first_name} ${candidate.last_name} ringer`,
+        });
+      } else {
+        setIncomingCallCandidate({
+          name: 'Ukendt nummer',
+          phone: phoneNumber,
+        });
+        
+        toast({
+          title: '📞 Indgående opkald',
+          description: `Fra ${phoneNumber}`,
+        });
+      }
+    } catch (error) {
+      console.error('Error in lookupCandidate:', error);
+    }
+  };
 
   useEffect(() => {
     const initializeTwilio = async () => {
@@ -64,12 +129,19 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
             
             if (call) {
               setCurrentCall(call);
+              
+              // If incoming call, look up candidate info
+              if (status === 'incoming') {
+                const fromNumber = call.parameters.From;
+                lookupCandidate(fromNumber);
+              }
             }
             if (status === 'active') {
               setCallStartTime(new Date());
             }
             if (status === 'disconnected') {
               handleCallEnd();
+              setIncomingCallCandidate(null);
             }
           },
           (debugUpdate) => {
@@ -418,11 +490,33 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
         </div>
 
         {callStatus === 'incoming' && currentCall && (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-center">
-              Fra: {currentCall.parameters.From}
-            </p>
-            <div className="flex gap-2">
+          <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
+            {incomingCallCandidate ? (
+              <div className="space-y-2">
+                <p className="text-lg font-semibold text-center">
+                  {incomingCallCandidate.name}
+                </p>
+                <p className="text-sm text-muted-foreground text-center">
+                  {incomingCallCandidate.phone}
+                </p>
+                {incomingCallCandidate.role && (
+                  <Badge variant="outline" className="mx-auto block w-fit">
+                    {incomingCallCandidate.role === 'fieldmarketing' ? 'Fieldmarketing' : 'Salgskonsulent'}
+                  </Badge>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-center">
+                  Fra: {currentCall.parameters.From}
+                </p>
+                <p className="text-xs text-muted-foreground text-center">
+                  Søger kandidat...
+                </p>
+              </div>
+            )}
+            
+            <div className="flex gap-2 pt-2">
               <Button onClick={acceptCall} className="flex-1" variant="default">
                 <Phone className="h-4 w-4 mr-2" />
                 Besvar
