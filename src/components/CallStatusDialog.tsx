@@ -2,11 +2,13 @@ import { Phone, PhoneOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CallStatusDialogProps {
   candidateName: string;
   candidatePhone: string;
   callSid?: string;
+  applicationId?: string;
   onHangup: () => void;
 }
 
@@ -14,10 +16,12 @@ export const CallStatusDialog = ({
   candidateName, 
   candidatePhone,
   callSid,
+  applicationId,
   onHangup 
 }: CallStatusDialogProps) => {
   const [callDuration, setCallDuration] = useState(0);
   const [status, setStatus] = useState<'ringing' | 'connected'>('ringing');
+  const [callStartTime] = useState(new Date());
 
   useEffect(() => {
     // Simulate connection after 3 seconds
@@ -42,6 +46,31 @@ export const CallStatusDialog = ({
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleHangup = async () => {
+    // Log call to database if we have an applicationId
+    if (applicationId && status === 'connected') {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        await supabase.from('communication_logs').insert({
+          application_id: applicationId,
+          type: 'phone',
+          direction: 'outbound',
+          duration: callDuration,
+          outcome: 'completed',
+          content: `Opkald til ${candidatePhone}`,
+          created_by: user?.id
+        });
+        
+        console.log('Call logged successfully');
+      } catch (error) {
+        console.error('Error logging call:', error);
+      }
+    }
+    
+    onHangup();
   };
 
   return (
@@ -84,7 +113,7 @@ export const CallStatusDialog = ({
           {/* Actions */}
           <div className="flex justify-center">
             <Button
-              onClick={onHangup}
+              onClick={handleHangup}
               variant="destructive"
               size="lg"
               className="rounded-full w-16 h-16"

@@ -582,14 +582,16 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
         </Card>
       </Collapsible>
 
-      {showCallStatus && (
+      {showCallStatus && applications[0] && (
         <CallStatusDialog
           candidateName={`${candidate.first_name} ${candidate.last_name}`}
           candidatePhone={candidate.phone}
           callSid={currentCallSid}
+          applicationId={applications[0].id}
           onHangup={() => {
             setShowCallStatus(false);
             setCurrentCallSid('');
+            if (onUpdate) onUpdate(); // Refresh parent to show new call log
             toast.success("Opkald afsluttet");
           }}
         />
