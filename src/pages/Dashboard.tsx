@@ -599,7 +599,7 @@ const Dashboard = () => {
                           }}
                           labelStyle={{ color: 'hsl(var(--foreground))' }}
                           formatter={(value: any, name: string) => {
-                            if (name === "avgRevenuePerEmployee") return [`${value.toLocaleString('da-DK')} kr.`, "Gns. indtjening pr. ansat"];
+                            if (name === "avgRevenuePerEmployee") return [`${value.toLocaleString('da-DK')} kr.`, "Gns. dækningsbidrag pr. ansat"];
                             return [value, name];
                           }}
                         />
@@ -620,7 +620,7 @@ const Dashboard = () => {
                           <div className="flex-1">
                             <div className="font-medium">{team.teamName}</div>
                             <div className="text-sm text-muted-foreground">
-                              {team.totalHired} ansatte • {team.churnedCount} stoppet • {team.avgRevenuePerEmployee.toLocaleString('da-DK')} kr./ansat
+                              {team.totalHired} ansatte • {team.churnedCount} stoppet • {team.avgRevenuePerEmployee.toLocaleString('da-DK')} kr. DB/ansat
                             </div>
                           </div>
                           <Badge 
@@ -723,34 +723,31 @@ const Dashboard = () => {
                         wrapperStyle={{ paddingTop: '20px' }}
                         iconType="line"
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Team Nord" 
-                        stroke="hsl(var(--chart-1))" 
-                        strokeWidth={2}
-                        dot={{ fill: 'hsl(var(--chart-1))' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Team Syd" 
-                        stroke="hsl(var(--chart-2))" 
-                        strokeWidth={2}
-                        dot={{ fill: 'hsl(var(--chart-2))' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Team Vest" 
-                        stroke="hsl(var(--chart-3))" 
-                        strokeWidth={2}
-                        dot={{ fill: 'hsl(var(--chart-3))' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Team Øst" 
-                        stroke="hsl(var(--chart-4))" 
-                        strokeWidth={2}
-                        dot={{ fill: 'hsl(var(--chart-4))' }}
-                      />
+                      {/* Dynamically render lines for each team */}
+                      {Object.keys(trendData[0] || {})
+                        .filter(key => key !== 'month')
+                        .map((teamName, index) => {
+                          const colors = [
+                            'hsl(var(--chart-1))',
+                            'hsl(var(--chart-2))',
+                            'hsl(var(--chart-3))',
+                            'hsl(var(--chart-4))',
+                            'hsl(var(--chart-5))',
+                          ];
+                          const color = colors[index % colors.length];
+                          
+                          return (
+                            <Line 
+                              key={teamName}
+                              type="monotone" 
+                              dataKey={teamName} 
+                              stroke={color} 
+                              strokeWidth={2}
+                              dot={{ fill: color }}
+                            />
+                          );
+                        })
+                      }
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
