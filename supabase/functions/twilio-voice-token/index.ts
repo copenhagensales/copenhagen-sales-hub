@@ -57,9 +57,24 @@ serve(async (req) => {
       }
     };
 
-    // Base64URL encode
-    const base64url = (str: string) => {
-      return btoa(str)
+    // Base64URL encode helper
+    const base64url = (input: string | Uint8Array) => {
+      let binary;
+      if (typeof input === 'string') {
+        binary = new TextEncoder().encode(input);
+      } else {
+        binary = input;
+      }
+      
+      // Convert to base64
+      let base64 = '';
+      const bytes = new Uint8Array(binary);
+      const len = bytes.length;
+      for (let i = 0; i < len; i++) {
+        base64 += String.fromCharCode(bytes[i]);
+      }
+      
+      return btoa(base64)
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=/g, '');
@@ -82,9 +97,7 @@ serve(async (req) => {
 
     const signatureData = encoder.encode(signatureInput);
     const signature = await crypto.subtle.sign('HMAC', key, signatureData);
-    const encodedSignature = base64url(
-      String.fromCharCode(...new Uint8Array(signature))
-    );
+    const encodedSignature = base64url(new Uint8Array(signature));
 
     const token = `${signatureInput}.${encodedSignature}`;
 
