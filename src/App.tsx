@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import Applications from "./pages/Applications";
 import Candidates from "./pages/Candidates";
 import CandidateProfile from "./pages/CandidateProfile";
 import Reports from "./pages/Reports";
@@ -57,10 +56,6 @@ const App = () => {
             <Route
               path="/"
               element={session ? <Dashboard /> : <Navigate to="/auth" replace />}
-            />
-            <Route
-              path="/applications"
-              element={session ? <Applications /> : <Navigate to="/auth" replace />}
             />
             <Route
               path="/candidates"
