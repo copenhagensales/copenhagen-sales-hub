@@ -124,9 +124,9 @@ serve(async (req) => {
     // Create new application
     const applicationNotes = [];
     
-    // Add notes from Zapier webhook if provided
+    // Add notes from Zapier webhook if provided with label
     if (data.notes) {
-      applicationNotes.push(data.notes);
+      applicationNotes.push(`Ansøgning fra kandidat: ${data.notes}`);
     }
     
     // Add repeat application note if applicable
@@ -139,7 +139,7 @@ serve(async (req) => {
       .insert({
         candidate_id: candidateId,
         role: data.role,
-        source: data.source || 'Zapier',
+        source: 'Hjemmesiden', // Always set to "Hjemmesiden"
         application_date: new Date().toISOString(),
         status: 'ny',
         cv_url: data.cv_url || null,
