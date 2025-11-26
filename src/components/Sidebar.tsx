@@ -22,12 +22,14 @@ export const Sidebar = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [newCandidatesCount, setNewCandidatesCount] = useState(0);
 
   useEffect(() => {
     fetchUnreadCount();
+    fetchNewCandidatesCount();
 
     // Subscribe to changes in communication_logs
-    const channel = supabase
+    const messagesChannel = supabase
       .channel('unread-messages-count')
       .on(
         'postgres_changes',
@@ -43,8 +45,25 @@ export const Sidebar = () => {
       )
       .subscribe();
 
+    // Subscribe to changes in candidates
+    const candidatesChannel = supabase
+      .channel('new-candidates-count')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'candidates'
+        },
+        () => {
+          fetchNewCandidatesCount();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(candidatesChannel);
     };
   }, []);
 
@@ -59,6 +78,15 @@ export const Sidebar = () => {
     setUnreadCount(count || 0);
   };
 
+  const fetchNewCandidatesCount = async () => {
+    const { count } = await supabase
+      .from('candidates')
+      .select('*', { count: 'exact', head: true })
+      .is('first_viewed_at', null);
+
+    setNewCandidatesCount(count || 0);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -66,7 +94,7 @@ export const Sidebar = () => {
 
   const navItems = [
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/candidates", icon: Users, label: "Kandidater" },
+    { to: "/candidates", icon: Users, label: "Kandidater", badge: newCandidatesCount },
     { to: "/employees", icon: Briefcase, label: "Ansatte" },
     { to: "/upcoming-hires", icon: CalendarCheck, label: "Kommende ansættelser" },
     { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
