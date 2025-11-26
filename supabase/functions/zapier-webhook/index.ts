@@ -58,7 +58,7 @@ serve(async (req) => {
       .from('candidates')
       .select('id, email, phone')
       .or(`email.eq.${data.email},phone.eq.${data.phone}`)
-      .single();
+      .maybeSingle();
 
     let candidateId: string;
 
