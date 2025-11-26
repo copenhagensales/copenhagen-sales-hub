@@ -46,6 +46,28 @@ const Candidates = () => {
   useEffect(() => {
     fetchCandidates();
     fetchTeams();
+
+    // Set up realtime subscription for new candidates
+    const channel = supabase
+      .channel('candidates-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'candidates'
+        },
+        (payload) => {
+          console.log('New candidate received:', payload);
+          // Refresh candidates list when new candidate is added
+          fetchCandidates();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchTeams = async () => {
