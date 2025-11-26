@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { create } from "https://deno.land/x/djwt@v2.8/mod.ts";
+// @ts-ignore - Import from esm.sh
+import twilio from "https://esm.sh/twilio@5.3.5";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,48 +54,31 @@ serve(async (req) => {
     const identity = "agent";
     console.log('[Twilio Token] Using identity:', identity);
 
-    // Create JWT payload for Twilio Voice
-    const now = Math.floor(Date.now() / 1000);
-    const exp = now + 3600; // Token valid for 1 hour
+    // Create Access Token using official Twilio library
+    const AccessToken = twilio.jwt.AccessToken;
+    const VoiceGrant = AccessToken.VoiceGrant;
 
-    const payload = {
-      jti: `${apiKeySid}-${now}`,
-      iss: apiKeySid,
-      sub: accountSid,
-      exp: exp,
-      grants: {
-        identity: identity,
-        voice: {
-          outgoing: {
-            application_sid: twimlAppSid,
-          },
-          incoming: {
-            allow: true,
-          },
-        },
-      },
-    };
-
-    console.log('[Twilio Token] JWT payload:', {
-      ...payload,
-      grants: {
-        identity: payload.grants.identity,
-        voice: 'configured',
-      },
-    });
-
-    // Create JWT token using API Key Secret
-    const key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(apiKeySecret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
+    // Create an access token
+    const accessToken = new AccessToken(
+      accountSid,
+      apiKeySid,
+      apiKeySecret,
+      { identity }
     );
 
-    const token = await create({ alg: 'HS256', typ: 'JWT' }, payload, key);
+    // Create a Voice grant
+    const voiceGrant = new VoiceGrant({
+      outgoingApplicationSid: twimlAppSid,
+      incomingAllow: true,
+    });
 
-    console.log('[Twilio Token] Token generated successfully, length:', token.length);
+    // Add the grant to the token
+    accessToken.addGrant(voiceGrant);
+
+    // Generate the JWT
+    const token = accessToken.toJwt();
+
+    console.log('[Twilio Token] Token generated successfully using Twilio library, length:', token.length);
     console.log('[Twilio Token] Token preview:', `${token.slice(0, 50)}...`);
 
     return new Response(
