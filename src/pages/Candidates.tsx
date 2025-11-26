@@ -59,6 +59,12 @@ const Candidates = () => {
         },
         (payload) => {
           console.log('New candidate received:', payload);
+          
+          // Play notification sound
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE');
+          audio.volume = 0.5;
+          audio.play().catch(err => console.log('Audio play failed:', err));
+          
           // Show toast notification
           toast.success(`Ny kandidat modtaget: ${payload.new.first_name} ${payload.new.last_name}`);
           // Refresh candidates list when new candidate is added
