@@ -28,6 +28,7 @@ interface Candidate {
   phone: string;
   notes?: string;
   created_at: string;
+  first_viewed_at?: string | null;
 }
 
 interface CandidateWithApplications {

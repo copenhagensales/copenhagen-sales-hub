@@ -64,6 +64,7 @@ interface CandidateCardProps {
     phone: string;
     notes?: string;
     created_at: string;
+    first_viewed_at?: string | null;
   };
   applications: Application[];
   teams?: any[];
@@ -170,7 +171,18 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
     navigate(`/candidates/${candidate.id}`);
   };
 
-  const handleCardClick = () => {
+  const handleCardClick = async () => {
+    // Mark candidate as viewed if not already viewed
+    if (!candidate.first_viewed_at) {
+      try {
+        await supabase
+          .from("candidates")
+          .update({ first_viewed_at: new Date().toISOString() })
+          .eq("id", candidate.id);
+      } catch (error) {
+        console.error("Error marking candidate as viewed:", error);
+      }
+    }
     navigate(`/candidates/${candidate.id}`);
   };
 
@@ -360,6 +372,11 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
 
                   {/* Right side - Badges and actions */}
                   <div className="flex flex-col items-end gap-1.5 md:gap-2">
+                    {!candidate.first_viewed_at && (
+                      <Badge className="bg-status-new text-white whitespace-nowrap text-xs font-semibold">
+                        NY
+                      </Badge>
+                    )}
                     <Badge variant="outline" className="whitespace-nowrap text-xs">
                       <FileText className="h-3 w-3 mr-1" />
                       {applications.length}
