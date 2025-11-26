@@ -59,6 +59,8 @@ const Candidates = () => {
         },
         (payload) => {
           console.log('New candidate received:', payload);
+          // Show toast notification
+          toast.success(`Ny kandidat modtaget: ${payload.new.first_name} ${payload.new.last_name}`);
           // Refresh candidates list when new candidate is added
           fetchCandidates();
         }
