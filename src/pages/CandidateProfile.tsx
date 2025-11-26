@@ -156,6 +156,14 @@ const CandidateProfile = () => {
       if (candidateError) throw candidateError;
       setCandidate(candidateData);
 
+      // Mark candidate as viewed if not already viewed
+      if (candidateData && !candidateData.first_viewed_at) {
+        await supabase
+          .from("candidates")
+          .update({ first_viewed_at: new Date().toISOString() })
+          .eq("id", id);
+      }
+
       // Fetch teams
       const { data: teamsData, error: teamsError } = await supabase
         .from("teams")
