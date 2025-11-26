@@ -81,20 +81,62 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
           applicationId: application?.id,
         });
 
+        // Show toast notification
         toast({
           title: '📞 Indgående opkald',
           description: `${candidate.first_name} ${candidate.last_name} ringer`,
+          duration: 30000, // Show for 30 seconds or until dismissed
         });
+        
+        // Show browser notification if permission granted
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('📞 Indgående opkald', {
+            body: `${candidate.first_name} ${candidate.last_name} ringer`,
+            icon: '/favicon.ico',
+            requireInteraction: true,
+          });
+        } else if ('Notification' in window && Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              new Notification('📞 Indgående opkald', {
+                body: `${candidate.first_name} ${candidate.last_name} ringer`,
+                icon: '/favicon.ico',
+                requireInteraction: true,
+              });
+            }
+          });
+        }
       } else {
         setIncomingCallCandidate({
           name: 'Ukendt nummer',
           phone: phoneNumber,
         });
         
+        // Show toast notification
         toast({
           title: '📞 Indgående opkald',
           description: `Fra ${phoneNumber}`,
+          duration: 30000, // Show for 30 seconds or until dismissed
         });
+        
+        // Show browser notification if permission granted
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('📞 Indgående opkald', {
+            body: `Fra ${phoneNumber}`,
+            icon: '/favicon.ico',
+            requireInteraction: true,
+          });
+        } else if ('Notification' in window && Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              new Notification('📞 Indgående opkald', {
+                body: `Fra ${phoneNumber}`,
+                icon: '/favicon.ico',
+                requireInteraction: true,
+              });
+            }
+          });
+        }
       }
     } catch (error) {
       console.error('Error in lookupCandidate:', error);
