@@ -435,6 +435,19 @@ const Employees = () => {
                 return (
                 <Card key={emp.id} className={hasOverdueRevenue ? "border-destructive border-2" : ""}>
                   <CardContent className="p-6">
+                    {emp.employment_ended_date && (
+                      <div className="mb-4 p-3 bg-muted text-muted-foreground text-sm font-medium rounded flex items-center gap-2">
+                        <Badge variant="outline" className="bg-status-rejected/10 text-status-rejected border-status-rejected/20">
+                          Stoppet
+                        </Badge>
+                        <span>
+                          {format(new Date(emp.employment_ended_date), "d. MMMM yyyy", { locale: da })}
+                        </span>
+                        {emp.employment_end_reason && (
+                          <span className="text-xs">- {emp.employment_end_reason}</span>
+                        )}
+                      </div>
+                    )}
                     {hasOverdueRevenue && (
                       <div className="mb-4 p-2 bg-destructive/10 text-destructive text-sm font-medium rounded flex items-center gap-2">
                         <AlertCircle className="h-4 w-4" />
