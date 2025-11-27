@@ -106,7 +106,7 @@ export const Sidebar = () => {
   const SidebarContent = () => (
     <>
       <div className="p-6 border-b border-sidebar-border">
-        <img src={logo} alt="Copenhagen Sales" className="h-12 w-auto" />
+        <img src={logo} alt="Copenhagen Sales" className="h-16 w-auto" />
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
@@ -158,7 +158,7 @@ export const Sidebar = () => {
             </div>
           </SheetContent>
         </Sheet>
-        <img src={logo} alt="Copenhagen Sales" className="ml-4 h-8 w-auto" />
+        <img src={logo} alt="Copenhagen Sales" className="ml-4 h-10 w-auto" />
       </div>
 
       {/* Desktop Sidebar */}
