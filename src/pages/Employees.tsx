@@ -601,7 +601,7 @@ const Employees = () => {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -614,6 +614,18 @@ const Employees = () => {
                           <DollarSign className="h-4 w-4 mr-1" />
                           Dækningsbidrag
                         </Button>
+                        {!emp.employment_ended_date && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              setShowStopDialog(true);
+                            }}
+                          >
+                            Marker som stoppet
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
