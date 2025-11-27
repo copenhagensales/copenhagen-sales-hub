@@ -51,13 +51,13 @@ serve(async (req) => {
     }
 
     // Validate credential formats
-    if (!accountSid.startsWith("AC")) {
+    if (accountSid && !accountSid.startsWith("AC")) {
       throw new Error("Invalid TWILIO_ACCOUNT_SID format (must start with AC)");
     }
-    if (!apiKeySid.startsWith("SK")) {
+    if (apiKeySid && !apiKeySid.startsWith("SK")) {
       throw new Error("Invalid TWILIO_API_KEY_SID format (must start with SK)");
     }
-    if (!twimlAppSid.startsWith("AP")) {
+    if (twimlAppSid && !twimlAppSid.startsWith("AP")) {
       throw new Error("Invalid TWILIO_TWIML_APP_SID format (must start with AP)");
     }
 
@@ -82,8 +82,8 @@ serve(async (req) => {
     }
 
     try {
-      // Create an access token
-      accessToken = new AccessToken(accountSid, apiKeySid, apiKeySecret, { identity });
+      // Create an access token (assertions safe because we validated above)
+      accessToken = new AccessToken(accountSid!, apiKeySid!, apiKeySecret!, { identity });
       console.log("[Twilio Token] Access token object created");
     } catch (tokenError) {
       console.error("[Twilio Token] Error creating access token:", tokenError);

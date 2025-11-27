@@ -38,7 +38,7 @@ export const CallStatusDialog = ({
       const callStatus = call.status();
       console.log("Call status changed:", callStatus);
 
-      if (callStatus === Call.State.Connected || callStatus === Call.State.Open) {
+      if (callStatus === "open" || callStatus === "connecting") {
         setStatus("connected");
         // Start duration timer when connected
         durationIntervalRef.current = setInterval(() => {
@@ -47,7 +47,7 @@ export const CallStatusDialog = ({
             setCallDuration(elapsed);
           }
         }, 1000);
-      } else if (callStatus === Call.State.Disconnected) {
+      } else if (callStatus === "closed") {
         setStatus("disconnected");
         if (durationIntervalRef.current) {
           clearInterval(durationIntervalRef.current);
@@ -195,9 +195,9 @@ export const CallStatusDialog = ({
             </Button>
           </div>
 
-          {(callSid || call?.parameters()?.CallSid) && (
+          {(callSid || call?.parameters?.CallSid) && (
             <p className="text-xs text-center text-muted-foreground">
-              Call ID: {(callSid || call?.parameters()?.CallSid || "").slice(0, 8)}...
+              Call ID: {(callSid || call?.parameters?.CallSid || "").slice(0, 8)}...
             </p>
           )}
         </div>
