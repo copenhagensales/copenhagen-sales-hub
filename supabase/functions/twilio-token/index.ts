@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// @ts-ignore - Import from esm.sh
-import twilio from "https://esm.sh/twilio@5.3.5";
+import { create } from "https://deno.land/x/djwt@v3.0.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,67 +64,54 @@ serve(async (req) => {
     const identity = "agent";
     console.log("[Twilio Token] Using identity:", identity);
 
-    // Create Access Token using official Twilio library
-    console.log("[Twilio Token] Creating access token...");
+    // Create JWT manually
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + 3600; // Token expires in 1 hour
 
-    let AccessToken, VoiceGrant, accessToken, voiceGrant, token;
+    // Create the grants object for Voice
+    const grants = {
+      voice: {
+        outgoing: {
+          application_sid: twimlAppSid,
+        },
+        incoming: {
+          allow: true,
+        },
+      },
+    };
 
-    try {
-      AccessToken = twilio.jwt.AccessToken;
-      VoiceGrant = AccessToken.VoiceGrant;
-      console.log("[Twilio Token] Twilio library loaded successfully");
-    } catch (libError) {
-      console.error("[Twilio Token] Error loading Twilio library:", libError);
-      throw new Error(
-        `Failed to load Twilio library: ${libError instanceof Error ? libError.message : "Unknown error"}`,
-      );
-    }
+    // Create JWT payload
+    const payload = {
+      jti: `${apiKeySid}-${now}`,
+      iss: apiKeySid,
+      sub: accountSid,
+      exp: exp,
+      grants: grants,
+    };
 
-    try {
-      // Create an access token (assertions safe because we validated above)
-      accessToken = new AccessToken(accountSid!, apiKeySid!, apiKeySecret!, { identity });
-      console.log("[Twilio Token] Access token object created");
-    } catch (tokenError) {
-      console.error("[Twilio Token] Error creating access token:", tokenError);
-      throw new Error(
-        `Failed to create access token: ${tokenError instanceof Error ? tokenError.message : "Unknown error"}`,
-      );
-    }
+    console.log("[Twilio Token] Creating JWT with payload:", {
+      ...payload,
+      grants: "present",
+    });
 
-    try {
-      // Create a Voice grant
-      voiceGrant = new VoiceGrant({
-        outgoingApplicationSid: twimlAppSid,
-        incomingAllow: true,
-      });
-      console.log("[Twilio Token] Voice grant created");
-    } catch (grantError) {
-      console.error("[Twilio Token] Error creating voice grant:", grantError);
-      throw new Error(
-        `Failed to create voice grant: ${grantError instanceof Error ? grantError.message : "Unknown error"}`,
-      );
-    }
+    // Create CryptoKey from the API secret
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(apiKeySecret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
 
-    try {
-      // Add the grant to the token
-      accessToken.addGrant(voiceGrant);
-      console.log("[Twilio Token] Grant added to token");
-    } catch (addGrantError) {
-      console.error("[Twilio Token] Error adding grant:", addGrantError);
-      throw new Error(
-        `Failed to add grant: ${addGrantError instanceof Error ? addGrantError.message : "Unknown error"}`,
-      );
-    }
+    // Generate the JWT
+    const token = await create(
+      { alg: "HS256", typ: "JWT" },
+      payload,
+      key
+    );
 
-    try {
-      // Generate the JWT
-      token = accessToken.toJwt();
-      console.log("[Twilio Token] Token generated successfully, length:", token.length);
-      console.log("[Twilio Token] Token preview:", `${token.slice(0, 50)}...`);
-    } catch (jwtError) {
-      console.error("[Twilio Token] Error generating JWT:", jwtError);
-      throw new Error(`Failed to generate JWT: ${jwtError instanceof Error ? jwtError.message : "Unknown error"}`);
-    }
+    console.log("[Twilio Token] Token generated successfully, length:", token.length);
+    console.log("[Twilio Token] Token preview:", `${token.slice(0, 50)}...`);
 
     return new Response(JSON.stringify({ token }), {
       status: 200,
@@ -149,7 +135,7 @@ serve(async (req) => {
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      }
     );
   }
 });
