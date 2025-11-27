@@ -68,16 +68,13 @@ serve(async (req) => {
     const now = Math.floor(Date.now() / 1000);
     const exp = now + 3600; // Token expires in 1 hour
 
-    // Create the grants object for Voice
+    // Create the grants object for Voice according to Twilio spec
+    // Twilio expects: { identity: string, voice: { outgoing_application_sid: string, incoming_allow: boolean } }
     const grants = {
       identity: identity,
       voice: {
-        outgoing: {
-          application_sid: twimlAppSid,
-        },
-        incoming: {
-          allow: true,
-        },
+        outgoing_application_sid: twimlAppSid,
+        incoming_allow: true,
       },
     };
 
@@ -105,15 +102,11 @@ serve(async (req) => {
       new TextEncoder().encode(apiKeySecret),
       { name: "HMAC", hash: "SHA-256" },
       false,
-      ["sign"]
+      ["sign"],
     );
 
     // Generate the JWT
-    const token = await create(
-      { alg: "HS256", typ: "JWT" },
-      payload,
-      key
-    );
+    const token = await create({ alg: "HS256", typ: "JWT" }, payload, key);
 
     console.log("[Twilio Token] Token generated successfully, length:", token.length);
     console.log("[Twilio Token] Token preview:", `${token.slice(0, 50)}...`);
@@ -140,7 +133,7 @@ serve(async (req) => {
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   }
 });
