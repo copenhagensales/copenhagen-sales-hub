@@ -386,14 +386,11 @@ export type Database = {
     Enums: {
       application_role: "fieldmarketing" | "salgskonsulent"
       application_status:
-        | "ny"
-        | "telefon_screening"
-        | "case_rollespil"
-        | "interview"
-        | "tilbud"
         | "ansat"
-        | "afslag"
-        | "ghosted_cold"
+        | "udskudt_samtale"
+        | "ikke_kvalificeret"
+        | "ikke_ansat"
+        | "startet"
       user_role: "admin" | "hiring_manager" | "interviewer"
     }
     CompositeTypes: {
@@ -524,14 +521,11 @@ export const Constants = {
     Enums: {
       application_role: ["fieldmarketing", "salgskonsulent"],
       application_status: [
-        "ny",
-        "telefon_screening",
-        "case_rollespil",
-        "interview",
-        "tilbud",
         "ansat",
-        "afslag",
-        "ghosted_cold",
+        "udskudt_samtale",
+        "ikke_kvalificeret",
+        "ikke_ansat",
+        "startet",
       ],
       user_role: ["admin", "hiring_manager", "interviewer"],
     },

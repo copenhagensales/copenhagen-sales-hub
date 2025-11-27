@@ -72,14 +72,11 @@ interface CandidateCardProps {
 }
 
 const statusLabels: Record<string, string> = {
-  ny: "Ny",
-  telefon_screening: "Telefon-screening",
-  case_rollespil: "Case/Rollespil",
-  interview: "Interview",
-  tilbud: "Tilbud",
   ansat: "Ansat",
-  afslag: "Afslag",
-  ghosted_cold: "Ghosted/Cold",
+  udskudt_samtale: "Udskudt samtale",
+  ikke_kvalificeret: "Ikke kvalificeret",
+  ikke_ansat: "Ikke ansat",
+  startet: "Startet",
 };
 
 const roleLabels: Record<string, string> = {
@@ -497,14 +494,11 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="bg-popover z-50">
-                              <SelectItem value="ny">Ny</SelectItem>
-                              <SelectItem value="telefon_screening">Telefon-screening</SelectItem>
-                              <SelectItem value="case_rollespil">Case/Rollespil</SelectItem>
-                              <SelectItem value="interview">Interview</SelectItem>
-                              <SelectItem value="tilbud">Tilbud</SelectItem>
+                              <SelectItem value="startet">Startet</SelectItem>
+                              <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
+                              <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
+                              <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
                               <SelectItem value="ansat">Ansat</SelectItem>
-                              <SelectItem value="afslag">Afslag</SelectItem>
-                              <SelectItem value="ghosted_cold">Ghosted/Cold</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

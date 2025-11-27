@@ -124,14 +124,11 @@ const Applications = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle status</SelectItem>
-                <SelectItem value="ny">Ny</SelectItem>
-                <SelectItem value="telefon_screening">Telefon-screening</SelectItem>
-                <SelectItem value="case_rollespil">Case/Rollespil</SelectItem>
-                <SelectItem value="interview">Interview</SelectItem>
-                <SelectItem value="tilbud">Tilbud</SelectItem>
+                <SelectItem value="startet">Startet</SelectItem>
+                <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
+                <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
+                <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
                 <SelectItem value="ansat">Ansat</SelectItem>
-                <SelectItem value="afslag">Afslag</SelectItem>
-                <SelectItem value="ghosted_cold">Ghosted/Cold</SelectItem>
               </SelectContent>
             </Select>
           </div>
