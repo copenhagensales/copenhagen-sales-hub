@@ -247,7 +247,8 @@ const CandidateProfile = () => {
       }
 
       // Get call SID from call parameters
-      const callSid = call.parameters?.CallSid || "";
+      const callParams = call.parameters();
+      const callSid = callParams?.CallSid || "";
       setCurrentCallSid(callSid);
       setCurrentCall(call);
 
