@@ -34,7 +34,7 @@ export const NewApplicationDialog = ({
   const [role, setRole] = useState<string>("");
   const [source, setSource] = useState("");
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState("startet");
+  const [status, setStatus] = useState("ny_ansoegning");
   const [teamId, setTeamId] = useState("");
   const [nextStep, setNextStep] = useState("");
   const [deadline, setDeadline] = useState("");
@@ -152,6 +152,7 @@ export const NewApplicationDialog = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
+                <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
                 <SelectItem value="startet">Startet</SelectItem>
                 <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                 <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>

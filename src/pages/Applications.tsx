@@ -124,6 +124,7 @@ const Applications = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle status</SelectItem>
+                <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
                 <SelectItem value="startet">Startet</SelectItem>
                 <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                 <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
