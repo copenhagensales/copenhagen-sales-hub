@@ -105,7 +105,7 @@ export const Sidebar = () => {
 
   const SidebarContent = () => (
     <>
-      <div className="p-6 border-b border-sidebar-border flex justify-center items-center">
+      <div className="p-6 border-b border-sidebar-border">
         <img src={logo} alt="Copenhagen Sales" className="h-16 w-auto" />
       </div>
 
@@ -145,10 +145,10 @@ export const Sidebar = () => {
   return (
     <>
       {/* Mobile Header with Menu Button */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-sidebar border-b border-sidebar-border z-40 flex items-center justify-center px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-sidebar border-b border-sidebar-border z-40 flex items-center px-4">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-sidebar-foreground absolute left-4">
+            <Button variant="ghost" size="icon" className="text-sidebar-foreground">
               <Menu className="h-6 w-6" />
             </Button>
           </SheetTrigger>
@@ -158,7 +158,7 @@ export const Sidebar = () => {
             </div>
           </SheetContent>
         </Sheet>
-        <img src={logo} alt="Copenhagen Sales" className="h-10 w-auto" />
+        <img src={logo} alt="Copenhagen Sales" className="ml-4 h-10 w-auto" />
       </div>
 
       {/* Desktop Sidebar */}
