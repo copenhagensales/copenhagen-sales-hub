@@ -597,7 +597,6 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
         <CallStatusDialog
           candidateName={`${candidate.first_name} ${candidate.last_name}`}
           candidatePhone={candidate.phone}
-          call={null}
           callSid={currentCallSid}
           applicationId={applications[0].id}
           onHangup={() => {
