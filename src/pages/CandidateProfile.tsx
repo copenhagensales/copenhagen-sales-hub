@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
@@ -30,18 +30,13 @@ import {
   Edit,
   MessageCircle,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
 import { toast } from "sonner";
+import { Device, Call } from "@twilio/voice-sdk";
 
 interface Candidate {
   id: string;
@@ -99,7 +94,7 @@ interface PerformanceReview {
 interface CandidateNote {
   id: string;
   content: string;
-  note_type: 'call' | 'email' | 'general' | 'important' | 'action_item';
+  note_type: "call" | "email" | "general" | "important" | "action_item";
   created_at: string;
   created_by: string | null;
 }
@@ -117,22 +112,30 @@ const CandidateProfile = () => {
   const [showNewApplicationDialog, setShowNewApplicationDialog] = useState(false);
   const [showEditCandidateDialog, setShowEditCandidateDialog] = useState(false);
   const [showSoftphone, setShowSoftphone] = useState(false);
-  const [softphoneInitialNumber, setSoftphoneInitialNumber] = useState<string>('');
-  const [userId, setUserId] = useState<string>('');
+  const [softphoneInitialNumber, setSoftphoneInitialNumber] = useState<string>("");
+  const [userId, setUserId] = useState<string>("");
   const [showHiredDateDialog, setShowHiredDateDialog] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<{ applicationId: string; newStatus: string } | null>(null);
-  const [hiredDate, setHiredDate] = useState<string>('');
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ applicationId: string; newStatus: string } | null>(
+    null,
+  );
+  const [hiredDate, setHiredDate] = useState<string>("");
   const [showCallStatus, setShowCallStatus] = useState(false);
-  const [currentCallSid, setCurrentCallSid] = useState<string>('');
-  const [currentCallPhone, setCurrentCallPhone] = useState<string>('');
+  const [currentCall, setCurrentCall] = useState<Call | null>(null);
+  const [currentCallSid, setCurrentCallSid] = useState<string>("");
+  const [currentCallPhone, setCurrentCallPhone] = useState<string>("");
   const [showSmsDialog, setShowSmsDialog] = useState(false);
-  const [smsApplicationId, setSmsApplicationId] = useState<string>('');
+  const [smsApplicationId, setSmsApplicationId] = useState<string>("");
   const [showScheduleInterviewDialog, setShowScheduleInterviewDialog] = useState(false);
-  const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<string>('');
+  const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<string>("");
+  const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
+  const [isInitializingDevice, setIsInitializingDevice] = useState(false);
+  const deviceRef = useRef<Device | null>(null);
 
   useEffect(() => {
     const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
       }
@@ -142,7 +145,149 @@ const CandidateProfile = () => {
     if (id) {
       fetchCandidateData();
     }
+
+    // Initialize Twilio Device on mount
+    initializeTwilioDevice();
+
+    // Cleanup on unmount
+    return () => {
+      if (deviceRef.current) {
+        deviceRef.current.destroy();
+        deviceRef.current = null;
+      }
+    };
   }, [id]);
+
+  const initializeTwilioDevice = async () => {
+    if (deviceRef.current) {
+      return; // Already initialized
+    }
+
+    setIsInitializingDevice(true);
+    try {
+      // Get access token from twilio-token edge function
+      const { data, error } = await supabase.functions.invoke("twilio-token");
+
+      if (error) {
+        console.error("Error getting Twilio token:", error);
+        toast.error("Kunne ikke initialisere telefon");
+        return;
+      }
+
+      if (!data?.token) {
+        console.error("No token received from twilio-token");
+        toast.error("Kunne ikke få adgangstoken");
+        return;
+      }
+
+      // Initialize Twilio Device
+      const device = new Device(data.token, {
+        logLevel: 1, // Set to 0 for production
+      });
+
+      // Set up device event listeners
+      device.on("registered", () => {
+        console.log("Twilio Device registered");
+      });
+
+      device.on("error", (error) => {
+        console.error("Twilio Device error:", error);
+        toast.error("Telefon fejl: " + error.message);
+      });
+
+      device.on("incoming", (call) => {
+        console.log("Incoming call:", call);
+        // Handle incoming calls if needed
+      });
+
+      // Register the device
+      await device.register();
+
+      deviceRef.current = device;
+      setTwilioDevice(device);
+      console.log("Twilio Device initialized successfully");
+    } catch (error: any) {
+      console.error("Error initializing Twilio Device:", error);
+      toast.error("Kunne ikke initialisere telefon: " + error.message);
+    } finally {
+      setIsInitializingDevice(false);
+    }
+  };
+
+  const makeCall = async (candidatePhone: string) => {
+    if (!deviceRef.current) {
+      toast.error("Telefon ikke initialiseret. Prøv igen om et øjeblik.");
+      await initializeTwilioDevice();
+      return;
+    }
+
+    try {
+      setCurrentCallPhone(candidatePhone);
+      setShowCallStatus(true);
+
+      // Get the TwiML URL from call-candidate function
+      const { data: callData, error: callError } = await supabase.functions.invoke("call-candidate", {
+        body: { candidatePhone },
+      });
+
+      if (callError) {
+        throw callError;
+      }
+
+      // Make the call using Twilio Voice SDK
+      // The TwiML URL from bridge-candidate will be used via the access token configuration
+      const call = await deviceRef.current.connect({
+        params: {
+          To: candidatePhone,
+        },
+      });
+
+      if (!call) {
+        throw new Error("Kunne ikke oprette opkald");
+      }
+
+      // Get call SID from call parameters
+      const callSid = call.parameters()?.CallSid || "";
+      setCurrentCallSid(callSid);
+      setCurrentCall(call);
+
+      // Set up call event listeners
+      call.on("accept", () => {
+        console.log("Call accepted");
+        toast.success("Opkald accepteret");
+      });
+
+      call.on("disconnect", () => {
+        console.log("Call disconnected");
+        setCurrentCall(null);
+        setCurrentCallSid("");
+        setShowCallStatus(false);
+      });
+
+      call.on("cancel", () => {
+        console.log("Call cancelled");
+        setCurrentCall(null);
+        setCurrentCallSid("");
+        setShowCallStatus(false);
+      });
+
+      call.on("reject", () => {
+        console.log("Call rejected");
+        toast.error("Opkald afvist");
+        setCurrentCall(null);
+        setCurrentCallSid("");
+        setShowCallStatus(false);
+      });
+
+      toast.success("Ringer op til kandidaten...");
+    } catch (err: any) {
+      console.error("Call error:", err);
+      toast.error("Kunne ikke starte opkaldet: " + (err.message || "Ukendt fejl"));
+      setShowCallStatus(false);
+      setCurrentCall(null);
+      setCurrentCallSid("");
+    }
+  };
 
   const fetchCandidateData = async () => {
     try {
@@ -158,17 +303,11 @@ const CandidateProfile = () => {
 
       // Mark candidate as viewed if not already viewed
       if (candidateData && !candidateData.first_viewed_at) {
-        await supabase
-          .from("candidates")
-          .update({ first_viewed_at: new Date().toISOString() })
-          .eq("id", id);
+        await supabase.from("candidates").update({ first_viewed_at: new Date().toISOString() }).eq("id", id);
       }
 
       // Fetch teams
-      const { data: teamsData, error: teamsError } = await supabase
-        .from("teams")
-        .select("*")
-        .order("name");
+      const { data: teamsData, error: teamsError } = await supabase.from("teams").select("*").order("name");
 
       if (teamsError) throw teamsError;
       setTeams(teamsData || []);
@@ -188,10 +327,12 @@ const CandidateProfile = () => {
       if (applicationIds.length > 0) {
         const { data: commsData, error: commsError } = await supabase
           .from("communication_logs")
-          .select(`
+          .select(
+            `
             *,
             application:applications(role, application_date)
-          `)
+          `,
+          )
           .in("application_id", applicationIds)
           .order("created_at", { ascending: false });
 
@@ -201,10 +342,12 @@ const CandidateProfile = () => {
         // Fetch performance reviews
         const { data: reviewsData, error: reviewsError } = await supabase
           .from("performance_reviews")
-          .select(`
+          .select(
+            `
             *,
             application:applications(role)
-          `)
+          `,
+          )
           .in("application_id", applicationIds)
           .order("review_date", { ascending: false });
 
@@ -269,16 +412,16 @@ const CandidateProfile = () => {
     try {
       // If changing to "ansat", check if team and hired_date are set
       if (newStatus === "ansat") {
-        const application = applications.find(app => app.id === applicationId);
+        const application = applications.find((app) => app.id === applicationId);
         if (!application?.team_id) {
           toast.error("Du skal vælge et team før du kan sætte status til Ansat");
           return;
         }
-        
+
         // Check if hired_date is set, if not show dialog
         if (!application?.hired_date) {
           setPendingStatusChange({ applicationId, newStatus });
-          setHiredDate(new Date().toISOString().split('T')[0]); // Default to today
+          setHiredDate(new Date().toISOString().split("T")[0]); // Default to today
           setShowHiredDateDialog(true);
           return;
         }
@@ -308,9 +451,9 @@ const CandidateProfile = () => {
     try {
       const { error } = await supabase
         .from("applications")
-        .update({ 
+        .update({
           status: pendingStatusChange.newStatus as any,
-          hired_date: hiredDate
+          hired_date: hiredDate,
         })
         .eq("id", pendingStatusChange.applicationId);
 
@@ -319,7 +462,7 @@ const CandidateProfile = () => {
       toast.success("Medarbejder markeret som ansat!");
       setShowHiredDateDialog(false);
       setPendingStatusChange(null);
-      setHiredDate('');
+      setHiredDate("");
       fetchCandidateData();
     } catch (error: any) {
       toast.error("Kunne ikke opdatere status");
@@ -409,11 +552,7 @@ const CandidateProfile = () => {
       <div className="flex-1 overflow-auto md:pt-0 pt-16">
         <div className="p-4 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/candidates")}
-              className="w-full md:w-auto"
-            >
+            <Button variant="ghost" onClick={() => navigate("/candidates")} className="w-full md:w-auto">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Tilbage til kandidater
             </Button>
@@ -453,37 +592,14 @@ const CandidateProfile = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={async () => {
-                  try {
-                    setCurrentCallPhone(candidate.phone);
-                    setShowCallStatus(true);
-                    
-                    const { data, error } = await supabase.functions.invoke('call-candidate', {
-                      body: { candidatePhone: candidate.phone }
-                    });
-                    
-                    if (error) throw error;
-                    
-                    if (data?.sid) {
-                      setCurrentCallSid(data.sid);
-                    }
-                    
-                    toast.success("Systemet forbinder dig med kandidaten");
-                  } catch (err: any) {
-                    console.error('Call error:', err);
-                    toast.error("Kunne ikke starte opkaldet");
-                    setShowCallStatus(false);
-                  }
-                }}
+                onClick={() => makeCall(candidate.phone)}
+                disabled={isInitializingDevice || !twilioDevice}
                 className="flex-1 md:flex-initial"
               >
                 <Phone className="h-4 w-4 md:mr-2" />
-                <span className="hidden sm:inline ml-1">Ring op</span>
+                <span className="hidden sm:inline ml-1">{isInitializingDevice ? "Initialiserer..." : "Ring op"}</span>
               </Button>
-              <Button
-                onClick={() => setShowNewApplicationDialog(true)}
-                className="w-full md:w-auto"
-              >
+              <Button onClick={() => setShowNewApplicationDialog(true)} className="w-full md:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Ny ansøgning
               </Button>
@@ -496,264 +612,255 @@ const CandidateProfile = () => {
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-2xl">
-                  {candidate.first_name} {candidate.last_name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Mail className="h-4 w-4" />
-                  <a href={`mailto:${candidate.email}`} className="hover:text-primary">
-                    {candidate.email}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="h-4 w-4" />
-                  <button
-                    onClick={async () => {
-                      try {
-                        setCurrentCallPhone(candidate.phone);
-                        setShowCallStatus(true);
-                        
-                        const { data, error } = await supabase.functions.invoke('call-candidate', {
-                          body: { candidatePhone: candidate.phone }
-                        });
-                        
-                        if (error) throw error;
-                        
-                        if (data?.sid) {
-                          setCurrentCallSid(data.sid);
-                        }
-                        
-                        toast.success("Systemet forbinder dig med kandidaten");
-                      } catch (err: any) {
-                        console.error('Call error:', err);
-                        toast.error("Kunne ikke starte opkaldet");
-                        setShowCallStatus(false);
-                      }
-                    }}
-                    className="hover:text-primary hover:underline cursor-pointer text-left"
-                  >
-                    {candidate.phone}
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <div className="flex flex-col gap-1">
-                    {applications.length > 1 ? (
-                      <>
-                        <span className="font-medium">Ansøgningsdatoer:</span>
-                        {applications.map((app, index) => (
-                          <div key={app.id} className="flex items-center gap-2 text-sm">
-                            <span>
-                              {index + 1}. {format(new Date(app.application_date), "d. MMMM yyyy", { locale: da })}
-                            </span>
-                            {index === 0 && (
-                              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                Nyeste
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      <span>Første ansøgning: {format(new Date(candidate.created_at), "d. MMMM yyyy", { locale: da })}</span>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Latest application details */}
-                {applications.length > 0 && (
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium mb-3">Nuværende ansøgning</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Rolle:</span>
-                        <Select
-                          value={applications[0].role}
-                          onValueChange={(value) => handleRoleChange(applications[0].id, value)}
-                        >
-                          <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                            <SelectValue>
-                              <Badge className={roleColors[applications[0].role]}>
-                                {roleLabels[applications[0].role]}
-                              </Badge>
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover z-50">
-                            <SelectItem value="fieldmarketing">Fieldmarketing</SelectItem>
-                            <SelectItem value="salgskonsulent">Salgskonsulent</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Status:</span>
-                        <Select
-                          value={applications[0].status}
-                          onValueChange={(value) => handleStatusChange(applications[0].id, value)}
-                        >
-                          <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                            <SelectValue>
-                              <Badge className={statusColors[applications[0].status]}>
-                                {statusLabels[applications[0].status]}
-                              </Badge>
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover z-50">
-                            <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
-                            <SelectItem value="startet">Startet</SelectItem>
-                            <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
-                            <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
-                            <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
-                            <SelectItem value="ansat">Ansat</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Kilde:</span>
-                        <Select
-                          value={applications[0].source || "none"}
-                          onValueChange={(value) => handleSourceChange(applications[0].id, value === "none" ? "" : value)}
-                        >
-                          <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                            <SelectValue>
-                              <Badge variant="outline">
-                                {applications[0].source || "Ikke angivet"}
-                              </Badge>
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover z-50">
-                            <SelectItem value="none">Ikke angivet</SelectItem>
-                            <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                            <SelectItem value="Jobindex">Jobindex</SelectItem>
-                            <SelectItem value="Indeed">Indeed</SelectItem>
-                            <SelectItem value="Facebook">Facebook</SelectItem>
-                            <SelectItem value="Direkte">Direkte</SelectItem>
-                            <SelectItem value="Referral">Referral</SelectItem>
-                            <SelectItem value="Zapier">Zapier</SelectItem>
-                            <SelectItem value="Andet">Andet</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Team:</span>
-                        <Select
-                          value={applications[0].team_id || "none"}
-                          onValueChange={(value) => handleTeamChange(applications[0].id, value === "none" ? "" : value)}
-                        >
-                          <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
-                            <SelectValue>
-                              <Badge variant="outline" className={applications[0].team_id ? "bg-primary/10 text-primary border-primary/20" : ""}>
-                                {teams.find(t => t.id === applications[0].team_id)?.name || "Ikke valgt"}
-                              </Badge>
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover z-50">
-                            <SelectItem value="none">Ingen team</SelectItem>
-                            {teams.map(team => (
-                              <SelectItem key={team.id} value={team.id}>
-                                {team.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  <CardHeader>
+                    <CardTitle className="text-2xl">
+                      {candidate.first_name} {candidate.last_name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      <a href={`mailto:${candidate.email}`} className="hover:text-primary">
+                        {candidate.email}
+                      </a>
                     </div>
-                  </div>
-                )}
-                
-                {/* Interview date section */}
-                {applications.length > 0 && (
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">Jobsamtale</h4>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedApplicationForInterview(applications[0].id);
-                          setShowScheduleInterviewDialog(true);
-                        }}
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="h-4 w-4" />
+                      <button
+                        onClick={() => makeCall(candidate.phone)}
+                        disabled={isInitializingDevice || !twilioDevice}
+                        className="hover:text-primary hover:underline cursor-pointer text-left disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                        {applications[0].interview_date ? "Rediger" : "Planlæg"}
-                      </Button>
+                        {candidate.phone}
+                      </button>
                     </div>
-                    {applications[0].interview_date ? (
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Planlagt: </span>
-                        <span className="font-medium">
-                          {format(new Date(applications[0].interview_date), "d. MMMM yyyy 'kl.' HH:mm", { locale: da })}
-                        </span>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <div className="flex flex-col gap-1">
+                        {applications.length > 1 ? (
+                          <>
+                            <span className="font-medium">Ansøgningsdatoer:</span>
+                            {applications.map((app, index) => (
+                              <div key={app.id} className="flex items-center gap-2 text-sm">
+                                <span>
+                                  {index + 1}. {format(new Date(app.application_date), "d. MMMM yyyy", { locale: da })}
+                                </span>
+                                {index === 0 && (
+                                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                    Nyeste
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <span>
+                            Første ansøgning: {format(new Date(candidate.created_at), "d. MMMM yyyy", { locale: da })}
+                          </span>
+                        )}
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Ingen samtale planlagt</p>
+                    </div>
+
+                    {/* Latest application details */}
+                    {applications.length > 0 && (
+                      <div className="pt-4 border-t">
+                        <h4 className="font-medium mb-3">Nuværende ansøgning</h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Rolle:</span>
+                            <Select
+                              value={applications[0].role}
+                              onValueChange={(value) => handleRoleChange(applications[0].id, value)}
+                            >
+                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                <SelectValue>
+                                  <Badge className={roleColors[applications[0].role]}>
+                                    {roleLabels[applications[0].role]}
+                                  </Badge>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="fieldmarketing">Fieldmarketing</SelectItem>
+                                <SelectItem value="salgskonsulent">Salgskonsulent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Status:</span>
+                            <Select
+                              value={applications[0].status}
+                              onValueChange={(value) => handleStatusChange(applications[0].id, value)}
+                            >
+                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                <SelectValue>
+                                  <Badge className={statusColors[applications[0].status]}>
+                                    {statusLabels[applications[0].status]}
+                                  </Badge>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
+                                <SelectItem value="startet">Startet</SelectItem>
+                                <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
+                                <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
+                                <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
+                                <SelectItem value="ansat">Ansat</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Kilde:</span>
+                            <Select
+                              value={applications[0].source || "none"}
+                              onValueChange={(value) =>
+                                handleSourceChange(applications[0].id, value === "none" ? "" : value)
+                              }
+                            >
+                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                <SelectValue>
+                                  <Badge variant="outline">{applications[0].source || "Ikke angivet"}</Badge>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="none">Ikke angivet</SelectItem>
+                                <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                                <SelectItem value="Jobindex">Jobindex</SelectItem>
+                                <SelectItem value="Indeed">Indeed</SelectItem>
+                                <SelectItem value="Facebook">Facebook</SelectItem>
+                                <SelectItem value="Direkte">Direkte</SelectItem>
+                                <SelectItem value="Referral">Referral</SelectItem>
+                                <SelectItem value="Zapier">Zapier</SelectItem>
+                                <SelectItem value="Andet">Andet</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Team:</span>
+                            <Select
+                              value={applications[0].team_id || "none"}
+                              onValueChange={(value) =>
+                                handleTeamChange(applications[0].id, value === "none" ? "" : value)
+                              }
+                            >
+                              <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                <SelectValue>
+                                  <Badge
+                                    variant="outline"
+                                    className={
+                                      applications[0].team_id ? "bg-primary/10 text-primary border-primary/20" : ""
+                                    }
+                                  >
+                                    {teams.find((t) => t.id === applications[0].team_id)?.name || "Ikke valgt"}
+                                  </Badge>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="none">Ingen team</SelectItem>
+                                {teams.map((team) => (
+                                  <SelectItem key={team.id} value={team.id}>
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                )}
-                
-                {candidate.notes && (
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium mb-2">Ansøgning fra kandidat</h4>
-                    <p className="text-sm text-muted-foreground">{candidate.notes}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Oversigt</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Total ansøgninger</div>
-                  <div className="text-2xl font-bold">{applications.length}</div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <h4 className="text-sm font-medium mb-3">Kommunikationsstatistik</h4>
-                  <div className="space-y-3">
-                    {(() => {
-                      const phoneCalls = communications.filter(c => c.type === 'phone');
-                      const emails = communications.filter(c => c.type === 'email');
-                      const smsMessages = communications.filter(c => c.type === 'sms');
-                      
-                      const totalCalls = phoneCalls.length;
-                      const totalEmails = emails.length;
-                      const totalSms = smsMessages.length;
+                    {/* Interview date section */}
+                    {applications.length > 0 && (
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">Jobsamtale</h4>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedApplicationForInterview(applications[0].id);
+                              setShowScheduleInterviewDialog(true);
+                            }}
+                          >
+                            <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                            {applications[0].interview_date ? "Rediger" : "Planlæg"}
+                          </Button>
+                        </div>
+                        {applications[0].interview_date ? (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Planlagt: </span>
+                            <span className="font-medium">
+                              {format(new Date(applications[0].interview_date), "d. MMMM yyyy 'kl.' HH:mm", {
+                                locale: da,
+                              })}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Ingen samtale planlagt</p>
+                        )}
+                      </div>
+                    )}
 
-                      if (totalCalls === 0 && totalEmails === 0 && totalSms === 0) {
-                        return (
-                          <div className="text-sm text-muted-foreground text-center py-2">
-                            Ingen kommunikation registreret
-                          </div>
-                        );
-                      }
+                    {candidate.notes && (
+                      <div className="pt-4 border-t">
+                        <h4 className="font-medium mb-2">Ansøgning fra kandidat</h4>
+                        <p className="text-sm text-muted-foreground">{candidate.notes}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-                      return (
-                        <>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Opkald</span>
-                            <Badge variant="outline">{totalCalls}</Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Emails</span>
-                            <Badge variant="outline">{totalEmails}</Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">SMS</span>
-                            <Badge variant="outline">{totalSms}</Badge>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </CardContent>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Oversigt</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">Total ansøgninger</div>
+                      <div className="text-2xl font-bold">{applications.length}</div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <h4 className="text-sm font-medium mb-3">Kommunikationsstatistik</h4>
+                      <div className="space-y-3">
+                        {(() => {
+                          const phoneCalls = communications.filter((c) => c.type === "phone");
+                          const emails = communications.filter((c) => c.type === "email");
+                          const smsMessages = communications.filter((c) => c.type === "sms");
+
+                          const totalCalls = phoneCalls.length;
+                          const totalEmails = emails.length;
+                          const totalSms = smsMessages.length;
+
+                          if (totalCalls === 0 && totalEmails === 0 && totalSms === 0) {
+                            return (
+                              <div className="text-sm text-muted-foreground text-center py-2">
+                                Ingen kommunikation registreret
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Opkald</span>
+                                <Badge variant="outline">{totalCalls}</Badge>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Emails</span>
+                                <Badge variant="outline">{totalEmails}</Badge>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">SMS</span>
+                                <Badge variant="outline">{totalSms}</Badge>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
               </div>
 
@@ -764,110 +871,106 @@ const CandidateProfile = () => {
                     <CardTitle>Kommunikation</CardTitle>
                   </CardHeader>
                 </Card>
-                
+
                 <div className="space-y-4">
-              {communications.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    Ingen kommunikation registreret
-                  </CardContent>
-                </Card>
-              ) : (
-                communications.map((comm) => (
-                  <Card key={comm.id} className={comm.direction === 'inbound' ? 'border-l-4 border-l-primary' : ''}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="mt-1">
-                          {comm.type === "email" && <Mail className="h-5 w-5 text-primary" />}
-                          {comm.type === "sms" && <MessageSquare className="h-5 w-5 text-primary" />}
-                          {comm.type === "phone" && <PhoneCall className="h-5 w-5 text-primary" />}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline" className="capitalize">
-                              {comm.type === "sms" ? "SMS" : comm.type}
-                            </Badge>
-                            <Badge 
-                              variant={comm.direction === "inbound" ? "default" : "outline"} 
-                              className="capitalize"
-                            >
-                              {comm.direction === "inbound" ? "📩 Indgående" : "📤 Udgående"}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground ml-auto">
-                              {format(new Date(comm.created_at), "d. MMM yyyy HH:mm", { locale: da })}
-                            </span>
-                          </div>
-                          <div className="text-sm text-muted-foreground mb-1">
-                            Tilhører: {roleLabels[comm.application.role]} ansøgning
-                          </div>
-                          {comm.content && (
-                            <p className="text-sm mt-2 p-3 bg-muted/30 rounded border">{comm.content}</p>
-                          )}
-                          {comm.outcome && (
-                            <div className="mt-2 text-sm">
-                              <strong>Resultat:</strong> {comm.outcome}
+                  {communications.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-8 text-center text-muted-foreground">
+                        Ingen kommunikation registreret
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    communications.map((comm) => (
+                      <Card key={comm.id} className={comm.direction === "inbound" ? "border-l-4 border-l-primary" : ""}>
+                        <CardContent className="p-6">
+                          <div className="flex items-start gap-4">
+                            <div className="mt-1">
+                              {comm.type === "email" && <Mail className="h-5 w-5 text-primary" />}
+                              {comm.type === "sms" && <MessageSquare className="h-5 w-5 text-primary" />}
+                              {comm.type === "phone" && <PhoneCall className="h-5 w-5 text-primary" />}
                             </div>
-                          )}
-                          {comm.duration && (
-                            <div className="text-sm text-muted-foreground">
-                              Varighed: {Math.floor(comm.duration / 60)} min {comm.duration % 60} sek
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="capitalize">
+                                  {comm.type === "sms" ? "SMS" : comm.type}
+                                </Badge>
+                                <Badge
+                                  variant={comm.direction === "inbound" ? "default" : "outline"}
+                                  className="capitalize"
+                                >
+                                  {comm.direction === "inbound" ? "📩 Indgående" : "📤 Udgående"}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground ml-auto">
+                                  {format(new Date(comm.created_at), "d. MMM yyyy HH:mm", { locale: da })}
+                                </span>
+                              </div>
+                              <div className="text-sm text-muted-foreground mb-1">
+                                Tilhører: {roleLabels[comm.application.role]} ansøgning
+                              </div>
+                              {comm.content && (
+                                <p className="text-sm mt-2 p-3 bg-muted/30 rounded border">{comm.content}</p>
+                              )}
+                              {comm.outcome && (
+                                <div className="mt-2 text-sm">
+                                  <strong>Resultat:</strong> {comm.outcome}
+                                </div>
+                              )}
+                              {comm.duration && (
+                                <div className="text-sm text-muted-foreground">
+                                  Varighed: {Math.floor(comm.duration / 60)} min {comm.duration % 60} sek
+                                </div>
+                              )}
+                              {/* Reply button for inbound SMS */}
+                              {comm.type === "sms" && comm.direction === "inbound" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSmsApplicationId(comm.application_id);
+                                    setShowSmsDialog(true);
+                                  }}
+                                  className="mt-3"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                                  Svar på SMS
+                                </Button>
+                              )}
                             </div>
-                          )}
-                          {/* Reply button for inbound SMS */}
-                          {comm.type === "sms" && comm.direction === "inbound" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSmsApplicationId(comm.application_id);
-                                setShowSmsDialog(true);
-                              }}
-                              className="mt-3"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-                              Svar på SMS
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right column - Quick Notes Sidebar */}
+            <div className="hidden xl:block sticky top-6 h-[calc(100vh-120px)]">
+              <QuickNotesSidebar candidateId={candidate.id} notes={candidateNotes} onNotesUpdate={fetchCandidateData} />
             </div>
           </div>
         </div>
-
-          {/* Right column - Quick Notes Sidebar */}
-          <div className="hidden xl:block sticky top-6 h-[calc(100vh-120px)]">
-            <QuickNotesSidebar
-              candidateId={candidate.id}
-              notes={candidateNotes}
-              onNotesUpdate={fetchCandidateData}
-            />
-          </div>
-        </div>
       </div>
-    </div>
 
-    <NewApplicationDialog
-      open={showNewApplicationDialog}
-      onOpenChange={setShowNewApplicationDialog}
-      candidateId={candidate.id}
-      candidateName={`${candidate.first_name} ${candidate.last_name}`}
-      onSuccess={fetchCandidateData}
-    />
-
-    {showSoftphone && userId && (
-      <Softphone
-        userId={userId}
-        initialPhoneNumber={softphoneInitialNumber}
-        onClose={() => {
-          setShowSoftphone(false);
-          setSoftphoneInitialNumber('');
-        }}
+      <NewApplicationDialog
+        open={showNewApplicationDialog}
+        onOpenChange={setShowNewApplicationDialog}
+        candidateId={candidate.id}
+        candidateName={`${candidate.first_name} ${candidate.last_name}`}
+        onSuccess={fetchCandidateData}
       />
-    )}
+
+      {showSoftphone && userId && (
+        <Softphone
+          userId={userId}
+          initialPhoneNumber={softphoneInitialNumber}
+          onClose={() => {
+            setShowSoftphone(false);
+            setSoftphoneInitialNumber("");
+          }}
+        />
+      )}
 
       {candidate && (
         <EditCandidateDialog
@@ -892,12 +995,14 @@ const CandidateProfile = () => {
         <CallStatusDialog
           candidateName={`${candidate.first_name} ${candidate.last_name}`}
           candidatePhone={currentCallPhone}
+          call={currentCall}
           callSid={currentCallSid}
           applicationId={applications[0].id}
           onHangup={() => {
             setShowCallStatus(false);
-            setCurrentCallSid('');
-            setCurrentCallPhone('');
+            setCurrentCall(null);
+            setCurrentCallSid("");
+            setCurrentCallPhone("");
             fetchCandidateData(); // Refresh to show new call log
             toast.success("Opkald afsluttet");
           }}
@@ -922,46 +1027,37 @@ const CandidateProfile = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Angiv ansættelsesdato</DialogTitle>
-            <DialogDescription>
-              For at markere kandidaten som ansat skal du angive ansættelsesdatoen
-            </DialogDescription>
+            <DialogDescription>For at markere kandidaten som ansat skal du angive ansættelsesdatoen</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Ansættelsesdato *</Label>
-              <Input
-                type="date"
-                value={hiredDate}
-                onChange={(e) => setHiredDate(e.target.value)}
-                required
-              />
+              <Input type="date" value={hiredDate} onChange={(e) => setHiredDate(e.target.value)} required />
             </div>
             <div className="flex justify-end gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setShowHiredDateDialog(false);
                   setPendingStatusChange(null);
-                  setHiredDate('');
+                  setHiredDate("");
                 }}
               >
                 Annuller
               </Button>
-              <Button onClick={handleConfirmHiredDate}>
-                Bekræft ansættelse
-              </Button>
+              <Button onClick={handleConfirmHiredDate}>Bekræft ansættelse</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Schedule Interview Dialog */}
       {applications.length > 0 && (
         <ScheduleInterviewDialog
           open={showScheduleInterviewDialog}
           onOpenChange={setShowScheduleInterviewDialog}
           applicationId={selectedApplicationForInterview}
-          currentInterviewDate={applications.find(a => a.id === selectedApplicationForInterview)?.interview_date}
+          currentInterviewDate={applications.find((a) => a.id === selectedApplicationForInterview)?.interview_date}
           onSuccess={fetchCandidateData}
         />
       )}
