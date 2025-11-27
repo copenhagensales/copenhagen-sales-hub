@@ -17,6 +17,7 @@ import {
   CalendarCheck
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import logo from "@/assets/cph-sales-logo.png";
 
 export const Sidebar = () => {
   const navigate = useNavigate();
@@ -105,10 +106,8 @@ export const Sidebar = () => {
   const SidebarContent = () => (
     <>
       <div className="p-6 border-b border-sidebar-border">
-        <h1 className="text-xl font-bold text-sidebar-foreground">
-          Copenhagen Sales GPT
-        </h1>
-        <p className="text-sm text-sidebar-foreground/70">ATS System</p>
+        <img src={logo} alt="Copenhagen Sales" className="h-12 w-auto mb-2" />
+        <p className="text-sm text-sidebar-foreground/70">CS recruiter</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
@@ -160,9 +159,7 @@ export const Sidebar = () => {
             </div>
           </SheetContent>
         </Sheet>
-        <h1 className="ml-4 text-lg font-bold text-sidebar-foreground">
-          Copenhagen Sales GPT
-        </h1>
+        <img src={logo} alt="Copenhagen Sales" className="ml-4 h-8 w-auto" />
       </div>
 
       {/* Desktop Sidebar */}
