@@ -78,7 +78,7 @@ export const NewCandidateDialog = ({
         .insert({
           candidate_id: newCandidate.id,
           role: "salgskonsulent", // Default role
-          status: "ny",
+          status: "startet",
           source: "Direkte",
           application_date: new Date().toISOString(),
         });

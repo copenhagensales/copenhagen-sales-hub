@@ -139,7 +139,7 @@ const Dashboard = () => {
         .from("applications")
         .select("*", { count: "exact", head: true })
         .lt("updated_at", last24Hours)
-        .not("status", "in", '("ansat","afslag","ghosted_cold")');
+        .not("status", "in", '("ansat","ikke_kvalificeret","ikke_ansat")');
 
       // Calculate trends
       const trend24Hours = previous24HoursCount && previous24HoursCount > 0

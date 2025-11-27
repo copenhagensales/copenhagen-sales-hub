@@ -277,14 +277,11 @@ const Reports = () => {
   };
 
   const statusLabels: Record<string, string> = {
-    ny: "Ny",
-    telefon_screening: "Telefon-screening",
-    case_rollespil: "Case/Rollespil",
-    interview: "Interview",
-    tilbud: "Tilbud",
     ansat: "Ansat",
-    afslag: "Afslag",
-    ghosted_cold: "Ghosted/Cold",
+    udskudt_samtale: "Udskudt samtale",
+    ikke_kvalificeret: "Ikke kvalificeret",
+    ikke_ansat: "Ikke ansat",
+    startet: "Startet",
   };
 
   const roleLabels: Record<string, string> = {

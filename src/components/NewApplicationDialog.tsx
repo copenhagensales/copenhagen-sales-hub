@@ -34,7 +34,7 @@ export const NewApplicationDialog = ({
   const [role, setRole] = useState<string>("");
   const [source, setSource] = useState("");
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState("ny");
+  const [status, setStatus] = useState("startet");
   const [teamId, setTeamId] = useState("");
   const [nextStep, setNextStep] = useState("");
   const [deadline, setDeadline] = useState("");
@@ -109,7 +109,7 @@ export const NewApplicationDialog = ({
       setRole("");
       setSource("");
       setNotes("");
-      setStatus("ny");
+      setStatus("startet");
       setTeamId("");
       setNextStep("");
       setDeadline("");
@@ -152,14 +152,11 @@ export const NewApplicationDialog = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
-                <SelectItem value="ny">Ny</SelectItem>
-                <SelectItem value="telefon_screening">Telefon-screening</SelectItem>
-                <SelectItem value="case_rollespil">Case/Rollespil</SelectItem>
-                <SelectItem value="interview">Interview</SelectItem>
-                <SelectItem value="tilbud">Tilbud</SelectItem>
+                <SelectItem value="startet">Startet</SelectItem>
+                <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
+                <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
+                <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
                 <SelectItem value="ansat">Ansat</SelectItem>
-                <SelectItem value="afslag">Afslag</SelectItem>
-                <SelectItem value="ghosted_cold">Ghosted/Cold</SelectItem>
               </SelectContent>
             </Select>
           </div>
