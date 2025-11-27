@@ -11,180 +11,64 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
+    const { candidatePhone, candidateId } = await req.json();
 
-    // For browser softphone: Handle GET requests (TwiML for Voice SDK)
-    // When browser uses Voice SDK: device.connect({ To: candidatePhone })
-    // Twilio will call this URL - configure TwiML App Voice URL to point here
-    if (req.method === "GET") {
-      // Get candidate phone from query parameter or Twilio's 'To' parameter
-      // The browser should construct URL like: /call-candidate?candidate=PHONE_NUMBER
-      // Or Twilio may send 'To' parameter when Voice SDK initiates call
-      const candidatePhone = url.searchParams.get("To") || url.searchParams.get("candidate");
-
-      if (!candidatePhone) {
-        return new Response(
-          '<?xml version="1.0" encoding="UTF-8"?><Response><Say language="en-US">Error: No candidate phone number provided</Say></Response>',
-          { status: 400, headers: { "Content-Type": "text/xml" } },
-        );
-      }
-
-      const callerNumber = Deno.env.get("TWILIO_CALLER_NUMBER");
-
-      if (!callerNumber) {
-        console.error("Missing Twilio caller number");
-        return new Response(
-          '<?xml version="1.0" encoding="UTF-8"?><Response><Say language="en-US">Server configuration error</Say></Response>',
-          { status: 500, headers: { "Content-Type": "text/xml" } },
-        );
-      }
-
-      console.log(`Browser softphone calling candidate: ${candidatePhone}`);
-
-      // Return TwiML that dials the candidate directly from the browser
-      // The browser Voice SDK initiated the call, and this TwiML connects to the candidate
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Dial callerId="${callerNumber}" record="false">
-    <Number>${candidatePhone}</Number>
-  </Dial>
-</Response>`;
-
-      return new Response(twiml, {
-        status: 200,
-        headers: { "Content-Type": "text/xml" },
+    if (!candidatePhone) {
+      return new Response(JSON.stringify({ error: "candidatePhone is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Handle POST requests - check if it's Twilio form data (TwiML request) or JSON (API request)
-    if (req.method === "POST") {
-      const contentType = req.headers.get("content-type") || "";
+    const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const callerNumber = Deno.env.get("TWILIO_CALLER_NUMBER");
+    const appBaseUrl = Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "");
 
-      // Check if it's Twilio form data (for TwiML requests)
-      if (contentType.includes("application/x-www-form-urlencoded")) {
-        const formData = await req.formData();
-        const candidatePhone = formData.get("To") || formData.get("candidate");
-
-        if (!candidatePhone) {
-          return new Response(
-            '<?xml version="1.0" encoding="UTF-8"?><Response><Say language="en-US">Error: No candidate phone number provided</Say></Response>',
-            { status: 400, headers: { "Content-Type": "text/xml" } },
-          );
-        }
-
-        const callerNumber = Deno.env.get("TWILIO_CALLER_NUMBER");
-
-        if (!callerNumber) {
-          console.error("Missing Twilio caller number");
-          return new Response(
-            '<?xml version="1.0" encoding="UTF-8"?><Response><Say language="en-US">Server configuration error</Say></Response>',
-            { status: 500, headers: { "Content-Type": "text/xml" } },
-          );
-        }
-
-        console.log(`Browser softphone calling candidate (POST): ${candidatePhone}`);
-
-        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Dial callerId="${callerNumber}" record="false">
-    <Number>${candidatePhone}</Number>
-  </Dial>
-</Response>`;
-
-        return new Response(twiml, {
-          status: 200,
-          headers: { "Content-Type": "text/xml" },
-        });
-      }
-
-      // For JSON POST requests (API calls - backward compatibility)
-      if (contentType.includes("application/json")) {
-        const { candidatePhone } = await req.json();
-
-        if (!candidatePhone) {
-          return new Response(JSON.stringify({ error: "candidatePhone is required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-        const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-        const callerNumber = Deno.env.get("TWILIO_CALLER_NUMBER");
-
-        if (!accountSid || !authToken || !callerNumber) {
-          console.error("Missing Twilio credentials");
-          return new Response(JSON.stringify({ error: "Server configuration error" }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const appBaseUrl = Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "");
-        const twimlUrl = `${appBaseUrl}/functions/v1/call-candidate?candidate=${encodeURIComponent(candidatePhone)}`;
-
-        console.log(`API initiating call to candidate: ${candidatePhone}`);
-        console.log(`TwiML URL: ${twimlUrl}`);
-
-        // This POST method is for server-side call initiation (not typically used for browser softphone)
-        // Browser should use GET method with TwiML URL directly
-        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`;
-        const auth = btoa(`${accountSid}:${authToken}`);
-
-        const formData = new URLSearchParams({
-          To: callerNumber, // This would need to be adjusted based on your use case
-          From: callerNumber,
-          Url: twimlUrl,
-        });
-
-        const response = await fetch(twilioUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${auth}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: formData.toString(),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Twilio API error:", response.status, errorText);
-          return new Response(JSON.stringify({ error: `Twilio error: ${response.status}` }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const callData = await response.json();
-        console.log("Call created:", callData.sid);
-
-        return new Response(JSON.stringify({ sid: callData.sid, status: "initiated" }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    if (!accountSid || !authToken || !callerNumber) {
+      console.error("Missing Twilio credentials");
+      return new Response(JSON.stringify({ error: "Server configuration error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // If we reach here, it's an unsupported request
-    return new Response(JSON.stringify({ error: "Method not supported or missing candidate phone" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Generate TwiML URL that will dial the candidate directly
+    // This TwiML will be executed when the browser softphone makes the outbound call
+    const twimlUrl = `${appBaseUrl}/functions/v1/bridge-candidate?candidate=${encodeURIComponent(candidatePhone)}&candidateId=${candidateId || ""}`;
+
+    console.log(`Preparing direct browser call to candidate: ${candidatePhone}`);
+    console.log(`TwiML URL: ${twimlUrl}`);
+
+    // For browser-based softphone using Twilio Voice SDK:
+    // The browser should initiate the call directly using:
+    // device.connect({ To: candidatePhone })
+    //
+    // IMPORTANT: Configure your Twilio access token (in twilio-token function) to use
+    // this TwiML URL as the outbound application URL, OR ensure your Twilio Voice SDK
+    // is configured to route outbound calls through this TwiML URL.
+    //
+    // When the browser calls device.connect({ To: candidatePhone }), Twilio will:
+    // 1. Route the call through the TwiML app/URL configured in the access token
+    // 2. Execute the bridge-candidate TwiML which dials the candidate
+    // 3. The candidate will see the Twilio number (TWILIO_CALLER_NUMBER) as caller ID
+    // 4. Audio flows directly between browser and candidate (no agent mobile phone)
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        twimlUrl: twimlUrl,
+        candidatePhone: candidatePhone,
+        callerNumber: callerNumber,
+        message: "Ready for direct browser-to-candidate call",
+        // Browser should now use: device.connect({ To: candidatePhone })
+        // The call will route through bridge-candidate TwiML automatically
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (error) {
     console.error("Error in call-candidate:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
-
-    if (req.method === "GET") {
-      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say language="en-US">An error occurred: ${message}</Say>
-</Response>`;
-      return new Response(errorTwiml, {
-        status: 500,
-        headers: { "Content-Type": "text/xml" },
-      });
-    }
-
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
