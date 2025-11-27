@@ -70,6 +70,7 @@ serve(async (req) => {
 
     // Create the grants object for Voice
     const grants = {
+      identity: identity,
       voice: {
         outgoing: {
           application_sid: twimlAppSid,
@@ -80,18 +81,22 @@ serve(async (req) => {
       },
     };
 
-    // Create JWT payload
+    // Create JWT payload according to Twilio spec
     const payload = {
       jti: `${apiKeySid}-${now}`,
       iss: apiKeySid,
       sub: accountSid,
       exp: exp,
+      nbf: now,
       grants: grants,
     };
 
     console.log("[Twilio Token] Creating JWT with payload:", {
-      ...payload,
-      grants: "present",
+      jti: payload.jti,
+      iss: apiKeySid!.slice(0, 8) + "...",
+      sub: accountSid!.slice(0, 8) + "...",
+      identity: identity,
+      grants: "voice with outgoing and incoming",
     });
 
     // Create CryptoKey from the API secret
