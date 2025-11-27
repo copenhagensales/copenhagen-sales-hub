@@ -106,8 +106,7 @@ export const Sidebar = () => {
   const SidebarContent = () => (
     <>
       <div className="p-6 border-b border-sidebar-border">
-        <img src={logo} alt="Copenhagen Sales" className="h-12 w-auto mb-2" />
-        <p className="text-sm text-sidebar-foreground/70">CS recruiter</p>
+        <img src={logo} alt="Copenhagen Sales" className="h-12 w-auto" />
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
