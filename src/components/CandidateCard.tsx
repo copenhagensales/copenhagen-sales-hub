@@ -72,6 +72,7 @@ interface CandidateCardProps {
 }
 
 const statusLabels: Record<string, string> = {
+  ny_ansoegning: "Ny ansøgning",
   ansat: "Ansat",
   udskudt_samtale: "Udskudt samtale",
   ikke_kvalificeret: "Ikke kvalificeret",
@@ -85,14 +86,12 @@ const roleLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  ny: "bg-status-new/10 text-status-new border-status-new/20",
-  telefon_screening: "bg-status-progress/10 text-status-progress border-status-progress/20",
-  case_rollespil: "bg-status-progress/10 text-status-progress border-status-progress/20",
-  interview: "bg-status-progress/10 text-status-progress border-status-progress/20",
-  tilbud: "bg-status-success/10 text-status-success border-status-success/20",
+  ny_ansoegning: "bg-status-new/10 text-status-new border-status-new/20",
   ansat: "bg-status-success/10 text-status-success border-status-success/20",
-  afslag: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
-  ghosted_cold: "bg-muted text-muted-foreground border-border",
+  udskudt_samtale: "bg-status-progress/10 text-status-progress border-status-progress/20",
+  ikke_kvalificeret: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
+  ikke_ansat: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
+  startet: "bg-status-progress/10 text-status-progress border-status-progress/20",
 };
 
 const roleColors: Record<string, string> = {
@@ -494,6 +493,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="bg-popover z-50">
+                              <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
                               <SelectItem value="startet">Startet</SelectItem>
                               <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                               <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>

@@ -230,6 +230,7 @@ const CandidateProfile = () => {
   };
 
   const statusLabels: Record<string, string> = {
+    ny_ansoegning: "Ny ansøgning",
     ansat: "Ansat",
     udskudt_samtale: "Udskudt samtale",
     ikke_kvalificeret: "Ikke kvalificeret",
@@ -600,6 +601,7 @@ const CandidateProfile = () => {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-popover z-50">
+                            <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
                             <SelectItem value="startet">Startet</SelectItem>
                             <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                             <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>

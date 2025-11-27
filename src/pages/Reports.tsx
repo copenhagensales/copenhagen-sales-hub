@@ -277,6 +277,7 @@ const Reports = () => {
   };
 
   const statusLabels: Record<string, string> = {
+    ny_ansoegning: "Ny ansøgning",
     ansat: "Ansat",
     udskudt_samtale: "Udskudt samtale",
     ikke_kvalificeret: "Ikke kvalificeret",

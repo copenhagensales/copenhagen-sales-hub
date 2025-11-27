@@ -12,7 +12,7 @@ interface ZapierApplicationData {
   email: string;
   phone: string;
   role: 'fieldmarketing' | 'salgskonsulent';
-  status?: 'ansat' | 'udskudt_samtale' | 'ikke_kvalificeret' | 'ikke_ansat' | 'startet';
+  status?: 'ansat' | 'udskudt_samtale' | 'ikke_kvalificeret' | 'ikke_ansat' | 'startet' | 'ny_ansoegning';
   source?: string;
   notes?: string;
   cv_url?: string;
@@ -55,11 +55,11 @@ serve(async (req) => {
     }
 
     // Validate status if provided
-    const validStatuses = ['ansat', 'udskudt_samtale', 'ikke_kvalificeret', 'ikke_ansat', 'startet'];
+    const validStatuses = ['ansat', 'udskudt_samtale', 'ikke_kvalificeret', 'ikke_ansat', 'startet', 'ny_ansoegning'];
     if (data.status && !validStatuses.includes(data.status)) {
       return new Response(
         JSON.stringify({ 
-          error: "Invalid status. Must be one of: ansat, udskudt_samtale, ikke_kvalificeret, ikke_ansat, startet"
+          error: "Invalid status. Must be one of: ansat, udskudt_samtale, ikke_kvalificeret, ikke_ansat, startet, ny_ansoegning"
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -153,7 +153,7 @@ serve(async (req) => {
         role: data.role,
         source: 'Hjemmesiden', // Always set to "Hjemmesiden"
         application_date: new Date().toISOString(),
-        status: data.status || 'startet', // Use provided status or default to 'startet'
+        status: data.status || 'ny_ansoegning', // Use provided status or default to 'ny_ansoegning'
         cv_url: data.cv_url || null,
         cover_letter_url: data.cover_letter_url || null,
         notes: applicationNotes.length > 0 ? applicationNotes.join('\n\n') : null,
