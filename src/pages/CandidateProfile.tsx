@@ -149,7 +149,7 @@ const CandidateProfile = () => {
     // Initialize Twilio Device
     const initializeTwilioDevice = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("ttoke");
+        const { data, error } = await supabase.functions.invoke("ttoken");
         if (error) throw error;
 
         if (data?.token) {
