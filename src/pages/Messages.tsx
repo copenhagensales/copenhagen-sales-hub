@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Mail, Check, Eye, RefreshCw, Loader2, Trash2 } from "lucide-react";
+import { MessageSquare, Mail, Check, Eye, RefreshCw, Loader2, Trash2, CheckSquare, Square } from "lucide-react";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
 import { toast } from "sonner";
@@ -80,6 +80,7 @@ const Messages = () => {
   const [emailBody, setEmailBody] = useState<string>('');
   const [emailReplyToId, setEmailReplyToId] = useState<string>('');
   const [isFetchingEmails, setIsFetchingEmails] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchMessages();
@@ -214,6 +215,44 @@ const Messages = () => {
     }
   };
 
+  const deleteSelectedMessages = async () => {
+    try {
+      const { error } = await supabase
+        .from("communication_logs")
+        .delete()
+        .in("id", Array.from(selectedMessages));
+
+      if (error) throw error;
+
+      toast.success(`${selectedMessages.size} beskeder slettet`);
+      setSelectedMessages(new Set());
+      fetchMessages();
+    } catch (error: any) {
+      toast.error("Kunne ikke slette beskeder");
+      console.error(error);
+    }
+  };
+
+  const toggleMessageSelection = (messageId: string) => {
+    setSelectedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMessages.size === messages.length) {
+      setSelectedMessages(new Set());
+    } else {
+      setSelectedMessages(new Set(messages.map(m => m.id)));
+    }
+  };
+
   const unreadCount = messages.filter(m => !m.read).length;
 
   const handleFetchEmails = async () => {
@@ -241,13 +280,23 @@ const Messages = () => {
     <div className="flex min-h-screen w-full">
       <Sidebar />
       <main className="flex-1 p-4 md:p-8 overflow-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Beskeder</h1>
               <p className="text-muted-foreground">Håndter indgående SMS og emails</p>
             </div>
             <div className="flex items-center gap-3">
+              {selectedMessages.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={deleteSelectedMessages}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Slet valgte ({selectedMessages.size})
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -267,12 +316,28 @@ const Messages = () => {
           </div>
 
           <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'unread')} className="w-full">
-            <TabsList className="grid w-full max-w-[400px] grid-cols-2">
-              <TabsTrigger value="unread">
-                Ulæste {unreadCount > 0 && `(${unreadCount})`}
-              </TabsTrigger>
-              <TabsTrigger value="all">Alle</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center justify-between mb-4">
+              <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+                <TabsTrigger value="unread">
+                  Ulæste {unreadCount > 0 && `(${unreadCount})`}
+                </TabsTrigger>
+                <TabsTrigger value="all">Alle</TabsTrigger>
+              </TabsList>
+              {messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleSelectAll}
+                >
+                  {selectedMessages.size === messages.length ? (
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Square className="h-4 w-4 mr-2" />
+                  )}
+                  Vælg alle
+                </Button>
+              )}
+            </div>
 
             <TabsContent value={filter} className="space-y-4 mt-6">
               {loading ? (
@@ -295,12 +360,22 @@ const Messages = () => {
                   return (
                     <Card 
                       key={message.id} 
-                      className={`cursor-pointer transition-all hover:shadow-md ${
+                      className={`transition-all hover:shadow-md ${
                         !message.read ? 'border-l-4 border-l-primary bg-primary/5' : ''
-                      }`}
+                      } ${selectedMessages.has(message.id) ? 'ring-2 ring-primary' : ''}`}
                     >
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
+                          <div 
+                            className="mt-1 cursor-pointer"
+                            onClick={() => toggleMessageSelection(message.id)}
+                          >
+                            {selectedMessages.has(message.id) ? (
+                              <CheckSquare className="h-5 w-5 text-primary" />
+                            ) : (
+                              <Square className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </div>
                           <div className="mt-1">
                             {message.type === "sms" ? (
                               <MessageSquare className="h-5 w-5 text-primary" />
