@@ -20,6 +20,7 @@ import Reports from "./pages/Reports";
 import UpcomingHires from "./pages/UpcomingHires";
 import Admin from "./pages/Admin";
 import SmsTemplates from "./pages/SmsTemplates";
+import EmailTemplates from "./pages/EmailTemplates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -105,6 +106,10 @@ const App = () => {
             <Route
               path="/sms-templates"
               element={session ? <SmsTemplates /> : <Navigate to="/auth" replace />}
+            />
+            <Route
+              path="/email-templates"
+              element={session ? <EmailTemplates /> : <Navigate to="/auth" replace />}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
