@@ -155,7 +155,7 @@ const CandidateProfile = () => {
         if (data?.token) {
           const device = new Device(data.token, {
             logLevel: 1,
-            codecPreferences: ["opus", "pcmu"],
+            codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
           });
 
           device.on("registered", () => {
