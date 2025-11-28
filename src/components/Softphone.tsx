@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, X, Bug, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { TwilioVoiceManager } from '@/utils/TwilioVoice';
-import { supabase } from '@/integrations/supabase/client';
-import { Call } from '@twilio/voice-sdk';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from "react";
+import { Phone, PhoneOff, Mic, MicOff, X, Bug, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { TwilioVoiceManager } from "@/utils/TwilioVoice";
+import { supabase } from "@/integrations/supabase/client";
+import { Call } from "@twilio/voice-sdk";
+import { Badge } from "@/components/ui/badge";
 
 interface SoftphoneProps {
   userId: string;
@@ -16,8 +16,8 @@ interface SoftphoneProps {
 }
 
 export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProps) => {
-  const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber || '');
-  const [callStatus, setCallStatus] = useState<string>('initializing');
+  const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber || "");
+  const [callStatus, setCallStatus] = useState<string>("initializing");
   const [isMuted, setIsMuted] = useState(false);
   const [twilioManager, setTwilioManager] = useState<TwilioVoiceManager | null>(null);
   const [currentCall, setCurrentCall] = useState<Call | null>(null);
@@ -30,46 +30,46 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
     role?: string;
     applicationId?: string;
   } | null>(null);
-  
+
   // Debug state
   const [debugInfo, setDebugInfo] = useState({
-    tokenStatus: 'not_fetched',
+    tokenStatus: "not_fetched",
     tokenLength: 0,
-    deviceStatus: 'not_created',
+    deviceStatus: "not_created",
     lastError: null as string | null,
     lastErrorTime: null as Date | null,
   });
-  
+
   const { toast } = useToast();
 
   const lookupCandidate = async (phoneNumber: string) => {
     try {
-      console.log('Looking up candidate for phone:', phoneNumber);
-      
+      console.log("Looking up candidate for phone:", phoneNumber);
+
       // Clean phone number for comparison (remove +, spaces, etc.)
-      const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
-      
+      const cleanNumber = phoneNumber.replace(/[^0-9]/g, "");
+
       // Find candidate by phone number
       const { data: candidates, error: candidateError } = await supabase
-        .from('candidates')
-        .select('id, first_name, last_name, phone')
-        .ilike('phone', `%${cleanNumber.slice(-8)}%`) // Match last 8 digits
+        .from("candidates")
+        .select("id, first_name, last_name, phone")
+        .ilike("phone", `%${cleanNumber.slice(-8)}%`) // Match last 8 digits
         .limit(1);
 
       if (candidateError) {
-        console.error('Error looking up candidate:', candidateError);
+        console.error("Error looking up candidate:", candidateError);
         return;
       }
 
       if (candidates && candidates.length > 0) {
         const candidate = candidates[0];
-        
+
         // Get the latest application for this candidate
         const { data: applications } = await supabase
-          .from('applications')
-          .select('id, role')
-          .eq('candidate_id', candidate.id)
-          .order('created_at', { ascending: false })
+          .from("applications")
+          .select("id, role")
+          .eq("candidate_id", candidate.id)
+          .order("created_at", { ascending: false })
           .limit(1);
 
         const application = applications?.[0];
@@ -83,24 +83,24 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
 
         // Show toast notification
         toast({
-          title: '📞 Indgående opkald',
+          title: "📞 Indgående opkald",
           description: `${candidate.first_name} ${candidate.last_name} ringer`,
           duration: 30000, // Show for 30 seconds or until dismissed
         });
-        
+
         // Show browser notification if permission granted
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('📞 Indgående opkald', {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("📞 Indgående opkald", {
             body: `${candidate.first_name} ${candidate.last_name} ringer`,
-            icon: '/favicon.ico',
+            icon: "/favicon.ico",
             requireInteraction: true,
           });
-        } else if ('Notification' in window && Notification.permission !== 'denied') {
-          Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-              new Notification('📞 Indgående opkald', {
+        } else if ("Notification" in window && Notification.permission !== "denied") {
+          Notification.requestPermission().then((permission) => {
+            if (permission === "granted") {
+              new Notification("📞 Indgående opkald", {
                 body: `${candidate.first_name} ${candidate.last_name} ringer`,
-                icon: '/favicon.ico',
+                icon: "/favicon.ico",
                 requireInteraction: true,
               });
             }
@@ -108,30 +108,30 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
         }
       } else {
         setIncomingCallCandidate({
-          name: 'Ukendt nummer',
+          name: "Ukendt nummer",
           phone: phoneNumber,
         });
-        
+
         // Show toast notification
         toast({
-          title: '📞 Indgående opkald',
+          title: "📞 Indgående opkald",
           description: `Fra ${phoneNumber}`,
           duration: 30000, // Show for 30 seconds or until dismissed
         });
-        
+
         // Show browser notification if permission granted
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('📞 Indgående opkald', {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("📞 Indgående opkald", {
             body: `Fra ${phoneNumber}`,
-            icon: '/favicon.ico',
+            icon: "/favicon.ico",
             requireInteraction: true,
           });
-        } else if ('Notification' in window && Notification.permission !== 'denied') {
-          Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-              new Notification('📞 Indgående opkald', {
+        } else if ("Notification" in window && Notification.permission !== "denied") {
+          Notification.requestPermission().then((permission) => {
+            if (permission === "granted") {
+              new Notification("📞 Indgående opkald", {
                 body: `Fra ${phoneNumber}`,
-                icon: '/favicon.ico',
+                icon: "/favicon.ico",
                 requireInteraction: true,
               });
             }
@@ -139,49 +139,49 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
         }
       }
     } catch (error) {
-      console.error('Error in lookupCandidate:', error);
+      console.error("Error in lookupCandidate:", error);
     }
   };
 
   useEffect(() => {
     const initializeTwilio = async () => {
       try {
-        console.log('=== Starting Softphone Initialization ===');
-        console.log('User ID:', userId);
-        
-        setDebugInfo(prev => ({ ...prev, tokenStatus: 'fetching' }));
-        
+        console.log("=== Starting Softphone Initialization ===");
+        console.log("User ID:", userId);
+
+        setDebugInfo((prev) => ({ ...prev, tokenStatus: "fetching" }));
+
         const manager = new TwilioVoiceManager(
-          userId, 
+          userId,
           (status, call) => {
-            console.log('Call status changed:', status);
+            console.log("Call status changed:", status);
             setCallStatus(status);
-            
+
             // Update device status in debug info
-            if (status === 'ready') {
-              setDebugInfo(prev => ({ ...prev, deviceStatus: 'registered' }));
-            } else if (status === 'error') {
-              setDebugInfo(prev => ({ 
-                ...prev, 
-                deviceStatus: 'error',
-                lastError: 'Device error occurred',
-                lastErrorTime: new Date()
+            if (status === "ready") {
+              setDebugInfo((prev) => ({ ...prev, deviceStatus: "registered" }));
+            } else if (status === "error") {
+              setDebugInfo((prev) => ({
+                ...prev,
+                deviceStatus: "error",
+                lastError: "Device error occurred",
+                lastErrorTime: new Date(),
               }));
             }
-            
+
             if (call) {
               setCurrentCall(call);
-              
+
               // If incoming call, look up candidate info
-              if (status === 'incoming') {
+              if (status === "incoming") {
                 const fromNumber = call.parameters.From;
                 lookupCandidate(fromNumber);
               }
             }
-            if (status === 'active') {
+            if (status === "active") {
               setCallStartTime(new Date());
             }
-            if (status === 'disconnected') {
+            if (status === "disconnected") {
               handleCallEnd();
               setIncomingCallCandidate(null);
             }
@@ -189,68 +189,68 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
           (debugUpdate) => {
             // Update debug info from TwilioVoiceManager
             if (debugUpdate.tokenLength !== undefined) {
-              setDebugInfo(prev => ({ ...prev, tokenLength: debugUpdate.tokenLength }));
+              setDebugInfo((prev) => ({ ...prev, tokenLength: debugUpdate.tokenLength }));
             }
             if (debugUpdate.deviceError) {
-              setDebugInfo(prev => ({ 
-                ...prev, 
-                deviceStatus: 'error',
+              setDebugInfo((prev) => ({
+                ...prev,
+                deviceStatus: "error",
                 lastError: debugUpdate.deviceError,
-                lastErrorTime: new Date()
+                lastErrorTime: new Date(),
               }));
             }
-          }
+          },
         );
 
-        console.log('Calling manager.initialize()...');
-        setDebugInfo(prev => ({ ...prev, deviceStatus: 'creating' }));
-        
+        console.log("Calling manager.initialize()...");
+        setDebugInfo((prev) => ({ ...prev, deviceStatus: "creating" }));
+
         await manager.initialize();
-        console.log('Manager initialized successfully');
+        console.log("Manager initialized successfully");
         setTwilioManager(manager);
-        
-        setDebugInfo(prev => ({ 
-          ...prev, 
-          tokenStatus: 'fetched',
-          deviceStatus: 'created'
+
+        setDebugInfo((prev) => ({
+          ...prev,
+          tokenStatus: "fetched",
+          deviceStatus: "created",
         }));
       } catch (error) {
-        console.error('[Softphone] === Error Initializing Softphone ===');
-        console.error('[Softphone] Error type:', error?.constructor?.name);
-        console.error('[Softphone] Error message:', error instanceof Error ? error.message : String(error));
-        console.error('[Softphone] Full error:', error);
-        
-        const errorMsg = error instanceof Error ? error.message : 'Ukendt fejl';
-        
-        setDebugInfo(prev => ({
+        console.error("[Softphone] === Error Initializing Softphone ===");
+        console.error("[Softphone] Error type:", error?.constructor?.name);
+        console.error("[Softphone] Error message:", error instanceof Error ? error.message : String(error));
+        console.error("[Softphone] Full error:", error);
+
+        const errorMsg = error instanceof Error ? error.message : "Ukendt fejl";
+
+        setDebugInfo((prev) => ({
           ...prev,
-          tokenStatus: 'error',
-          deviceStatus: 'error',
+          tokenStatus: "error",
+          deviceStatus: "error",
           lastError: errorMsg,
-          lastErrorTime: new Date()
+          lastErrorTime: new Date(),
         }));
-        
+
         toast({
-          title: 'Telefon kunne ikke initialiseres',
+          title: "Telefon kunne ikke initialiseres",
           description: errorMsg,
-          variant: 'destructive',
+          variant: "destructive",
         });
-        setCallStatus('error');
+        setCallStatus("error");
       }
     };
 
     initializeTwilio();
 
     return () => {
-      console.log('Cleaning up Twilio manager');
+      console.log("Cleaning up Twilio manager");
       twilioManager?.destroy();
     };
   }, [userId]);
 
   // Auto-call when phone is ready and initialPhoneNumber is provided
   useEffect(() => {
-    if (callStatus === 'ready' && initialPhoneNumber && twilioManager && !currentCall) {
-      console.log('Auto-calling initial phone number:', initialPhoneNumber);
+    if (callStatus === "ready" && initialPhoneNumber && twilioManager && !currentCall) {
+      console.log("Auto-calling initial phone number:", initialPhoneNumber);
       makeCall();
     }
   }, [callStatus, initialPhoneNumber, twilioManager]);
@@ -264,15 +264,15 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
     try {
       // For now, we'll skip logging as we need application_id
       // TODO: Implement call logging with candidate matching
-      console.log('Call completed:', {
+      console.log("Call completed:", {
         from: callParams.From,
         to: callParams.To,
-        duration: duration
+        duration: duration,
       });
 
-      console.log('Call logged successfully');
+      console.log("Call logged successfully");
     } catch (error) {
-      console.error('Error logging call:', error);
+      console.error("Error logging call:", error);
     }
 
     setCurrentCall(null);
@@ -285,15 +285,15 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
     try {
       await twilioManager.makeCall(phoneNumber);
       toast({
-        title: 'Ringer op',
+        title: "Ringer op",
         description: `Ringer til ${phoneNumber}`,
       });
     } catch (error) {
-      console.error('Error making call:', error);
+      console.error("Error making call:", error);
       toast({
-        title: 'Fejl',
-        description: 'Kunne ikke ringe op',
-        variant: 'destructive',
+        title: "Fejl",
+        description: "Kunne ikke ringe op",
+        variant: "destructive",
       });
     }
   };
@@ -301,18 +301,18 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
   const testCredentials = async () => {
     setIsTestingCredentials(true);
     try {
-      setDebugInfo(prev => ({ ...prev, tokenStatus: "fetching" }));
+      setDebugInfo((prev) => ({ ...prev, tokenStatus: "fetching" }));
       toast({ description: "Testing Twilio credentials..." });
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const url = `${supabaseUrl}/functions/v1/twilio-token`;
-      
+      const url = `${supabaseUrl}/functions/v1/twiliotoken1`;
+
       console.log("[Test] Calling:", url);
-      
+
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -321,59 +321,59 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
       if (!response.ok) {
         const responseText = await response.text();
         console.error("[Test] Failed:", responseText);
-        setDebugInfo(prev => ({ 
-          ...prev, 
+        setDebugInfo((prev) => ({
+          ...prev,
           tokenStatus: "error",
           lastError: `HTTP ${response.status}: ${responseText}`,
-          lastErrorTime: new Date()
+          lastErrorTime: new Date(),
         }));
         toast({
           title: "Test failed",
           description: `HTTP ${response.status}`,
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
       const data = await response.json();
-      
+
       if (data.token) {
-        setDebugInfo(prev => ({ 
-          ...prev, 
+        setDebugInfo((prev) => ({
+          ...prev,
           tokenStatus: "verified",
           tokenLength: data.token.length,
-          lastError: null
+          lastError: null,
         }));
         toast({
           title: "✓ Credentials verified",
-          description: `Token generated (${data.token.length} chars)`
+          description: `Token generated (${data.token.length} chars)`,
         });
         console.log("[Test] Token received, length:", data.token.length);
       } else {
-        setDebugInfo(prev => ({ 
-          ...prev, 
+        setDebugInfo((prev) => ({
+          ...prev,
           tokenStatus: "error",
           lastError: "No token in response",
-          lastErrorTime: new Date()
+          lastErrorTime: new Date(),
         }));
         toast({
           title: "Test failed",
           description: "No token in response",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (error: any) {
       console.error("[Test] Error:", error);
-      setDebugInfo(prev => ({ 
-        ...prev, 
+      setDebugInfo((prev) => ({
+        ...prev,
         tokenStatus: "error",
         lastError: error?.message || String(error),
-        lastErrorTime: new Date()
+        lastErrorTime: new Date(),
       }));
       toast({
         title: "Test failed",
-        description: error?.message || 'Unknown error',
-        variant: "destructive"
+        description: error?.message || "Unknown error",
+        variant: "destructive",
       });
     } finally {
       setIsTestingCredentials(false);
@@ -395,65 +395,65 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
 
   const acceptCall = async () => {
     twilioManager?.acceptIncomingCall();
-    
+
     // Log the accepted call
     if (incomingCallCandidate?.applicationId) {
       try {
-        await supabase.from('communication_logs').insert({
+        await supabase.from("communication_logs").insert({
           application_id: incomingCallCandidate.applicationId,
-          type: 'call',
-          direction: 'inbound',
-          outcome: 'besvaret',
+          type: "call",
+          direction: "inbound",
+          outcome: "besvaret",
           content: `Indgående opkald fra ${incomingCallCandidate.name}`,
           created_by: userId,
         });
-        console.log('Incoming call logged as answered');
+        console.log("Incoming call logged as answered");
       } catch (error) {
-        console.error('Error logging accepted call:', error);
+        console.error("Error logging accepted call:", error);
       }
     }
   };
 
   const rejectCall = async () => {
     twilioManager?.rejectIncomingCall();
-    
+
     // Log the rejected call
     if (incomingCallCandidate?.applicationId) {
       try {
-        await supabase.from('communication_logs').insert({
+        await supabase.from("communication_logs").insert({
           application_id: incomingCallCandidate.applicationId,
-          type: 'call',
-          direction: 'inbound',
-          outcome: 'afvist',
+          type: "call",
+          direction: "inbound",
+          outcome: "afvist",
           content: `Indgående opkald fra ${incomingCallCandidate.name} - afvist`,
           created_by: userId,
         });
-        console.log('Incoming call logged as rejected');
+        console.log("Incoming call logged as rejected");
       } catch (error) {
-        console.error('Error logging rejected call:', error);
+        console.error("Error logging rejected call:", error);
       }
     }
-    
+
     // Clear incoming call state
     setIncomingCallCandidate(null);
   };
 
   const getStatusText = () => {
     switch (callStatus) {
-      case 'initializing':
-        return 'Initialiserer...';
-      case 'ready':
-        return 'Klar til opkald';
-      case 'connecting':
-        return 'Ringer...';
-      case 'active':
-        return 'I opkald';
-      case 'incoming':
-        return 'Indkommende opkald';
-      case 'disconnected':
-        return 'Afsluttet';
-      case 'error':
-        return 'Fejl';
+      case "initializing":
+        return "Initialiserer...";
+      case "ready":
+        return "Klar til opkald";
+      case "connecting":
+        return "Ringer...";
+      case "active":
+        return "I opkald";
+      case "incoming":
+        return "Indkommende opkald";
+      case "disconnected":
+        return "Afsluttet";
+      case "error":
+        return "Fejl";
       default:
         return callStatus;
     }
@@ -469,9 +469,7 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
       </div>
 
       <div className="space-y-4">
-        <div className="text-sm text-muted-foreground text-center">
-          {getStatusText()}
-        </div>
+        <div className="text-sm text-muted-foreground text-center">{getStatusText()}</div>
 
         {/* Debug Panel */}
         <div className="border rounded-lg overflow-hidden">
@@ -485,51 +483,53 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
             </div>
             {showDebug ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
-          
+
           {showDebug && (
             <div className="p-3 space-y-2 text-xs bg-muted/20">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Token:</span>
                 <div className="flex items-center gap-2">
-                  <Badge 
+                  <Badge
                     variant={
-                      debugInfo.tokenStatus === 'fetched' ? 'default' : 
-                      debugInfo.tokenStatus === 'error' ? 'destructive' : 
-                      'secondary'
+                      debugInfo.tokenStatus === "fetched"
+                        ? "default"
+                        : debugInfo.tokenStatus === "error"
+                          ? "destructive"
+                          : "secondary"
                     }
                     className="text-xs"
                   >
                     {debugInfo.tokenStatus}
                   </Badge>
                   {debugInfo.tokenLength > 0 && (
-                    <span className="text-[10px] text-muted-foreground">
-                      {debugInfo.tokenLength} chars
-                    </span>
+                    <span className="text-[10px] text-muted-foreground">{debugInfo.tokenLength} chars</span>
                   )}
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Device:</span>
-                <Badge 
+                <Badge
                   variant={
-                    debugInfo.deviceStatus === 'registered' ? 'default' : 
-                    debugInfo.deviceStatus === 'error' ? 'destructive' : 
-                    'secondary'
+                    debugInfo.deviceStatus === "registered"
+                      ? "default"
+                      : debugInfo.deviceStatus === "error"
+                        ? "destructive"
+                        : "secondary"
                   }
                   className="text-xs"
                 >
                   {debugInfo.deviceStatus}
                 </Badge>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Call Status:</span>
                 <Badge variant="outline" className="text-xs">
                   {callStatus}
                 </Badge>
               </div>
-              
+
               {debugInfo.lastError && (
                 <div className="pt-2 border-t">
                   <div className="text-muted-foreground mb-1 font-medium">Seneste fejl:</div>
@@ -538,20 +538,18 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
                   </div>
                   {debugInfo.lastErrorTime && (
                     <div className="text-muted-foreground mt-1 text-[10px]">
-                      {debugInfo.lastErrorTime.toLocaleTimeString('da-DK')}
+                      {debugInfo.lastErrorTime.toLocaleTimeString("da-DK")}
                     </div>
                   )}
                 </div>
               )}
-              
+
               {!debugInfo.lastError && (
                 <div className="pt-2 border-t">
-                  <div className="text-muted-foreground text-[10px] text-center py-1">
-                    ✓ Ingen fejl
-                  </div>
+                  <div className="text-muted-foreground text-[10px] text-center py-1">✓ Ingen fejl</div>
                 </div>
               )}
-              
+
               <div className="pt-2 border-t">
                 <Button
                   onClick={testCredentials}
@@ -561,40 +559,32 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
                   className="w-full text-xs"
                 >
                   <CheckCircle2 className="h-3 w-3 mr-1" />
-                  {isTestingCredentials ? 'Tester...' : 'Test Credentials'}
+                  {isTestingCredentials ? "Tester..." : "Test Credentials"}
                 </Button>
               </div>
             </div>
           )}
         </div>
 
-        {callStatus === 'incoming' && currentCall && (
+        {callStatus === "incoming" && currentCall && (
           <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
             {incomingCallCandidate ? (
               <div className="space-y-2">
-                <p className="text-lg font-semibold text-center">
-                  {incomingCallCandidate.name}
-                </p>
-                <p className="text-sm text-muted-foreground text-center">
-                  {incomingCallCandidate.phone}
-                </p>
+                <p className="text-lg font-semibold text-center">{incomingCallCandidate.name}</p>
+                <p className="text-sm text-muted-foreground text-center">{incomingCallCandidate.phone}</p>
                 {incomingCallCandidate.role && (
                   <Badge variant="outline" className="mx-auto block w-fit">
-                    {incomingCallCandidate.role === 'fieldmarketing' ? 'Fieldmarketing' : 'Salgskonsulent'}
+                    {incomingCallCandidate.role === "fieldmarketing" ? "Fieldmarketing" : "Salgskonsulent"}
                   </Badge>
                 )}
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-center">
-                  Fra: {currentCall.parameters.From}
-                </p>
-                <p className="text-xs text-muted-foreground text-center">
-                  Søger kandidat...
-                </p>
+                <p className="text-sm font-medium text-center">Fra: {currentCall.parameters.From}</p>
+                <p className="text-xs text-muted-foreground text-center">Søger kandidat...</p>
               </div>
             )}
-            
+
             <div className="flex gap-2 pt-2">
               <Button onClick={acceptCall} className="flex-1" variant="default">
                 <Phone className="h-4 w-4 mr-2" />
@@ -608,7 +598,7 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
           </div>
         )}
 
-        {callStatus === 'ready' && (
+        {callStatus === "ready" && (
           <div className="space-y-2">
             <Input
               type="tel"
@@ -623,32 +613,14 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
           </div>
         )}
 
-        {(callStatus === 'connecting' || callStatus === 'active') && (
+        {(callStatus === "connecting" || callStatus === "active") && (
           <div className="space-y-2">
-            {phoneNumber && (
-              <p className="text-sm font-medium text-center">
-                Til: {phoneNumber}
-              </p>
-            )}
+            {phoneNumber && <p className="text-sm font-medium text-center">Til: {phoneNumber}</p>}
             <div className="flex gap-2">
-              <Button
-                onClick={toggleMute}
-                variant="outline"
-                size="sm"
-                className="flex-1"
-              >
-                {isMuted ? (
-                  <MicOff className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
+              <Button onClick={toggleMute} variant="outline" size="sm" className="flex-1">
+                {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
-              <Button
-                onClick={hangup}
-                variant="destructive"
-                size="sm"
-                className="flex-1"
-              >
+              <Button onClick={hangup} variant="destructive" size="sm" className="flex-1">
                 <PhoneOff className="h-4 w-4 mr-2" />
                 Læg på
               </Button>
