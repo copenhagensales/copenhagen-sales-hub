@@ -88,6 +88,7 @@ const statusLabels: Record<string, string> = {
   startet: "Startet",
   ghostet: "Ghostet",
   takket_nej: "Takket nej",
+  interesseret_i_kundeservice: "Interesseret i kundeservice",
 };
 
 const roleLabels: Record<string, string> = {
@@ -104,6 +105,7 @@ const statusColors: Record<string, string> = {
   startet: "bg-status-progress/10 text-status-progress border-status-progress/20",
   ghostet: "bg-amber-500/10 text-amber-700 border-amber-500/20",
   takket_nej: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+  interesseret_i_kundeservice: "bg-blue-500/10 text-blue-700 border-blue-500/20",
 };
 
 const roleColors: Record<string, string> = {
@@ -646,6 +648,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, d
                               <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
                               <SelectItem value="ghostet">Ghostet</SelectItem>
                               <SelectItem value="takket_nej">Takket nej</SelectItem>
+                              <SelectItem value="interesseret_i_kundeservice">Interesseret i kundeservice</SelectItem>
                               <SelectItem value="ansat">Ansat</SelectItem>
                             </SelectContent>
                           </Select>
