@@ -5,7 +5,9 @@ import { NewCandidateDialog } from "@/components/NewCandidateDialog";
 import { CandidateCard } from "@/components/CandidateCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Search, Plus, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 interface Application {
@@ -42,6 +44,8 @@ const Candidates = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewCandidateDialog, setShowNewCandidateDialog] = useState(false);
   const [teams, setTeams] = useState<any[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("newest");
 
   useEffect(() => {
     fetchCandidates();
@@ -127,15 +131,38 @@ const Candidates = () => {
     }
   };
 
-  const filteredCandidates = candidatesWithApps.filter(({ candidate }) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      candidate.first_name.toLowerCase().includes(searchLower) ||
-      candidate.last_name.toLowerCase().includes(searchLower) ||
-      candidate.email.toLowerCase().includes(searchLower) ||
-      candidate.phone.includes(searchTerm)
-    );
-  });
+  const filteredCandidates = candidatesWithApps
+    .filter(({ candidate, applications }) => {
+      // Search filter
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        candidate.first_name.toLowerCase().includes(searchLower) ||
+        candidate.last_name.toLowerCase().includes(searchLower) ||
+        candidate.email.toLowerCase().includes(searchLower) ||
+        candidate.phone.includes(searchTerm);
+
+      if (!matchesSearch) return false;
+
+      // Status filter
+      if (statusFilter === "all") return true;
+      return applications.some(app => app.status === statusFilter);
+    })
+    .sort((a, b) => {
+      // Get latest application date for each candidate
+      const aLatestApp = a.applications[0]; // Already sorted by date desc
+      const bLatestApp = b.applications[0];
+      
+      if (!aLatestApp || !bLatestApp) return 0;
+      
+      const aDate = new Date(aLatestApp.application_date).getTime();
+      const bDate = new Date(bLatestApp.application_date).getTime();
+      
+      if (sortBy === "newest") {
+        return bDate - aDate; // Newest first
+      } else {
+        return aDate - bDate; // Oldest first
+      }
+    });
 
   if (loading) {
     return (
@@ -172,7 +199,7 @@ const Candidates = () => {
             onSuccess={fetchCandidates}
           />
 
-          <div className="mb-6">
+          <div className="mb-6 space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -181,6 +208,46 @@ const Candidates = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+            </div>
+
+            <div className="flex items-start gap-4 flex-col md:flex-row">
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Filtre:</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 w-full">
+                <div className="space-y-2">
+                  <Label htmlFor="status-filter" className="text-sm">Status</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger id="status-filter">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle statuser</SelectItem>
+                      <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
+                      <SelectItem value="startet">Startet</SelectItem>
+                      <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
+                      <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
+                      <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
+                      <SelectItem value="ansat">Ansat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sort-by" className="text-sm">Sortering</Label>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger id="sort-by">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Nyeste ansøgninger først</SelectItem>
+                      <SelectItem value="oldest">Ældste ansøgninger først</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
 
