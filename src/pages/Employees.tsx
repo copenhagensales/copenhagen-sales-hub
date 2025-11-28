@@ -25,6 +25,7 @@ interface Employee {
   candidate_id: string;
   role: string;
   team_id: string;
+  sub_team?: string;
   hired_date: string;
   employment_ended_date?: string;
   employment_end_reason?: string;
@@ -95,6 +96,7 @@ const Employees = () => {
           candidate_id,
           role,
           team_id,
+          sub_team,
           hired_date,
           employment_ended_date,
           employment_end_reason,
@@ -223,9 +225,20 @@ const Employees = () => {
 
   const handleTeamChange = async (employeeId: string, newTeamId: string) => {
     try {
+      const emp = employees.find(e => e.id === employeeId);
+      const oldTeam = teams.find(t => t.id === emp?.team_id);
+      const newTeam = teams.find(t => t.id === newTeamId);
+      
+      const updates: any = { team_id: newTeamId || null };
+      
+      // Clear sub_team if switching away from United
+      if (oldTeam?.name === "United" && newTeam?.name !== "United") {
+        updates.sub_team = null;
+      }
+      
       const { error } = await supabase
         .from("applications")
-        .update({ team_id: newTeamId || null })
+        .update(updates)
         .eq("id", employeeId);
 
       if (error) throw error;
@@ -234,6 +247,23 @@ const Employees = () => {
       fetchEmployees();
     } catch (error: any) {
       toast.error("Kunne ikke opdatere team");
+      console.error(error);
+    }
+  };
+
+  const handleSubTeamChange = async (employeeId: string, newSubTeam: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ sub_team: newSubTeam || null })
+        .eq("id", employeeId);
+
+      if (error) throw error;
+
+      toast.success("Underteam opdateret!");
+      fetchEmployees();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere underteam");
       console.error(error);
     }
   };
@@ -522,6 +552,34 @@ const Employees = () => {
                               </SelectContent>
                             </Select>
                           </div>
+
+                          {/* Sub-team (only for United) */}
+                          {emp.team_id && emp.team?.name === "United" && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground w-20">Underteam:</span>
+                              <Select
+                                value={emp.sub_team || "none"}
+                                onValueChange={(value) => handleSubTeamChange(emp.id, value === "none" ? "" : value)}
+                              >
+                                <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent p-0 focus:ring-0">
+                                  <SelectValue>
+                                    <Badge variant="outline">
+                                      {emp.sub_team || "Intet underteam"}
+                                    </Badge>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover z-50">
+                                  <SelectItem value="none">Intet underteam</SelectItem>
+                                  <SelectItem value="Tryg">Tryg</SelectItem>
+                                  <SelectItem value="ASE">ASE</SelectItem>
+                                  <SelectItem value="Finansforbundet">Finansforbundet</SelectItem>
+                                  <SelectItem value="Business Danmark">Business Danmark</SelectItem>
+                                  <SelectItem value="Codan">Codan</SelectItem>
+                                  <SelectItem value="AKA">AKA</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
 
                           {/* Role */}
                           <div className="flex items-center gap-2">
