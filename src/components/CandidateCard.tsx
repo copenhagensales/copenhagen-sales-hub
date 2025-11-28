@@ -86,6 +86,8 @@ const statusLabels: Record<string, string> = {
   ikke_kvalificeret: "Ikke kvalificeret",
   ikke_ansat: "Ikke ansat",
   startet: "Startet",
+  ghostet: "Ghostet",
+  takket_nej: "Takket nej",
 };
 
 const roleLabels: Record<string, string> = {
@@ -100,6 +102,8 @@ const statusColors: Record<string, string> = {
   ikke_kvalificeret: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
   ikke_ansat: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
   startet: "bg-status-progress/10 text-status-progress border-status-progress/20",
+  ghostet: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+  takket_nej: "bg-purple-500/10 text-purple-700 border-purple-500/20",
 };
 
 const roleColors: Record<string, string> = {
@@ -640,6 +644,8 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, d
                               <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                               <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
                               <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
+                              <SelectItem value="ghostet">Ghostet</SelectItem>
+                              <SelectItem value="takket_nej">Takket nej</SelectItem>
                               <SelectItem value="ansat">Ansat</SelectItem>
                             </SelectContent>
                           </Select>
