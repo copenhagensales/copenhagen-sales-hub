@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   MessageSquare,
-  CalendarCheck
+  CalendarCheck,
+  Shield
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "@/assets/cph-sales-logo.png";
@@ -24,10 +25,12 @@ export const Sidebar = () => {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [newCandidatesCount, setNewCandidatesCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchUnreadCount();
     fetchNewCandidatesCount();
+    checkAdminRole();
 
     // Subscribe to changes in communication_logs
     const messagesChannel = supabase
@@ -88,6 +91,20 @@ export const Sidebar = () => {
     setNewCandidatesCount(count || 0);
   };
 
+  const checkAdminRole = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    setIsAdmin(!!data);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -102,6 +119,8 @@ export const Sidebar = () => {
     { to: "/pipeline", icon: Kanban, label: "Pipeline" },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
   ];
+
+  const adminNavItem = { to: "/admin", icon: Shield, label: "Admin", adminOnly: true };
 
   const SidebarContent = () => (
     <>
@@ -127,6 +146,18 @@ export const Sidebar = () => {
             )}
           </NavLink>
         ))}
+        
+        {isAdmin && (
+          <NavLink
+            to={adminNavItem.to}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent transition-colors"
+            activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+            onClick={() => setOpen(false)}
+          >
+            <adminNavItem.icon className="h-5 w-5" />
+            <span>{adminNavItem.label}</span>
+          </NavLink>
+        )}
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
