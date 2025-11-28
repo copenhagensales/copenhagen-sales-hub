@@ -146,7 +146,7 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
     if (callStatus === "disconnected" || callStatus === "error") {
       const timer = setTimeout(() => {
         setCallStatus("ready");
-      }, 1500);
+      }, 3000);
 
       return () => clearTimeout(timer);
     }
