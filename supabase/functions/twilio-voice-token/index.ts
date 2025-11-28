@@ -43,7 +43,7 @@ async function handleTwilioVoiceRequest(req: Request) {
 
   const FALLBACK_CALLER_ID = "+4552512853";
   //Deno.env.get("TWILIO_CALLER_NUMBER") ||
-  const callerId = Deno.env.get("TWILIO_CALLER_NUMBER_1") || FALLBACK_CALLER_ID;
+  const callerId = Deno.env.get("TWILIO_CALLER_NUMBER") || FALLBACK_CALLER_ID;
 
   console.log(`Intentando conectar llamada hacia: ${to} desde: ${callerId}`);
 
