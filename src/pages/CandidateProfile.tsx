@@ -292,6 +292,8 @@ const CandidateProfile = () => {
     ikke_kvalificeret: "Ikke kvalificeret",
     ikke_ansat: "Ikke ansat",
     startet: "Startet",
+    ghostet: "Ghostet",
+    takket_nej: "Takket nej",
   };
 
   const roleLabels: Record<string, string> = {
@@ -300,14 +302,14 @@ const CandidateProfile = () => {
   };
 
   const statusColors: Record<string, string> = {
-    ny: "bg-status-new/10 text-status-new border-status-new/20",
-    telefon_screening: "bg-status-progress/10 text-status-progress border-status-progress/20",
-    case_rollespil: "bg-status-progress/10 text-status-progress border-status-progress/20",
-    interview: "bg-status-progress/10 text-status-progress border-status-progress/20",
-    tilbud: "bg-status-success/10 text-status-success border-status-success/20",
+    ny_ansoegning: "bg-status-new/10 text-status-new border-status-new/20",
     ansat: "bg-status-success/10 text-status-success border-status-success/20",
-    afslag: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
-    ghosted_cold: "bg-muted text-muted-foreground border-border",
+    udskudt_samtale: "bg-status-progress/10 text-status-progress border-status-progress/20",
+    ikke_kvalificeret: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
+    ikke_ansat: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
+    startet: "bg-status-progress/10 text-status-progress border-status-progress/20",
+    ghostet: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+    takket_nej: "bg-purple-500/10 text-purple-700 border-purple-500/20",
   };
 
   const roleColors: Record<string, string> = {
@@ -818,6 +820,8 @@ const CandidateProfile = () => {
                                 <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                                 <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
                                 <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
+                                <SelectItem value="ghostet">Ghostet</SelectItem>
+                                <SelectItem value="takket_nej">Takket nej</SelectItem>
                                 <SelectItem value="ansat">Ansat</SelectItem>
                               </SelectContent>
                             </Select>
