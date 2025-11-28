@@ -353,18 +353,30 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
 
                     {/* Latest application info */}
                     {latestApplication && (
-                      <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-2 md:mt-3">
-                        <Badge className={roleColors[latestApplication.role]} variant="outline">
-                          {roleLabels[latestApplication.role]}
-                        </Badge>
-                        <Badge className={statusColors[latestApplication.status]} variant="outline">
-                          {statusLabels[latestApplication.status]}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {getTimeSinceApplication(latestApplication.application_date)}
-                        </Badge>
-                      </div>
+                      <>
+                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-2 md:mt-3">
+                          <Badge className={roleColors[latestApplication.role]} variant="outline">
+                            {roleLabels[latestApplication.role]}
+                          </Badge>
+                          <Badge className={statusColors[latestApplication.status]} variant="outline">
+                            {statusLabels[latestApplication.status]}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {getTimeSinceApplication(latestApplication.application_date)}
+                          </Badge>
+                        </div>
+
+                        {/* Application preview */}
+                        {latestApplication.notes && (
+                          <div className="mt-2 text-xs text-muted-foreground bg-muted/30 rounded p-2 border border-border/50">
+                            <span className="font-medium text-foreground">Ansøgning: </span>
+                            <span className="line-clamp-2">
+                              {latestApplication.notes}
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
