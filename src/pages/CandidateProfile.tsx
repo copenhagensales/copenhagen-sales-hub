@@ -8,13 +8,28 @@ import { Softphone } from "@/components/Softphone";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
 import { QuickNotesSidebar } from "@/components/QuickNotesSidebar";
+import { CommunicationTimeline } from "@/components/CommunicationTimeline";
 import { ScheduleInterviewDialog } from "@/components/ScheduleInterviewDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, PhoneCall, Plus, Edit, MessageCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  Calendar,
+  FileText,
+  MessageSquare,
+  PhoneCall,
+  TrendingUp,
+  AlertCircle,
+  Plus,
+  Edit,
+  MessageCircle,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +38,6 @@ import { da } from "date-fns/locale";
 import { toast } from "sonner";
 import { Device, Call } from "@twilio/voice-sdk";
 
-// ... (Interfaces se mantienen igual)
 interface Candidate {
   id: string;
   first_name: string;
@@ -117,103 +131,25 @@ const CandidateProfile = () => {
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
 
-  // --- FUNCIÓN UNIFICADA DE LLAMADAS ---
-  const handleCall = async (phoneNumber: string) => {
-    try {
-      if (!deviceRef.current) {
-        toast.error("Telefonen forbinder stadig. Vent venligst...");
-        // Intentamos reinicializar si falló
-        return;
-      }
-
-      if (deviceRef.current.state === "unregistered") {
-        toast.error("Telefonen mistede forbindelsen. Genindlæs siden.");
-        return;
-      }
-
-      if (callRef.current) {
-        toast.error("Et opkald er allerede i gang");
-        return;
-      }
-
-      setCurrentCallPhone(phoneNumber);
-      setShowCallStatus(true);
-      toast.info("Forbinder opkald...");
-
-      // Conexión correcta según SDK v2
-      // Enviamos params dentro de un objeto params
-      const call = await deviceRef.current.connect({
-        params: {
-          To: phoneNumber,
-        },
-      });
-
-      callRef.current = call;
-      setActiveCall(call);
-
-      call.on("accept", () => {
-        console.log("Call accepted");
-        setCurrentCallSid(call.parameters.CallSid || "");
-      });
-
-      call.on("disconnect", () => {
-        console.log("Call disconnected");
-        handleCallDisconnect(phoneNumber);
-      });
-
-      call.on("cancel", () => {
-        console.log("Call cancelled");
-        handleCallCleanup();
-      });
-
-      call.on("error", (error) => {
-        console.error("Call error:", error);
-        // Filtramos errores comunes de "cancelación" normal
-        if (error.code !== 31005) {
-          toast.error("Opkaldsfejl: " + error.message);
-        }
-        handleCallCleanup();
-      });
-    } catch (err: any) {
-      console.error("Initiation error:", err);
-      toast.error("Kunne ikke starte opkaldet: " + err.message);
-      handleCallCleanup();
-    }
-  };
-
-  const handleCallDisconnect = (phoneNumber: string) => {
-    // Si la llamada terminó correctamente, guardamos el log
-    if (showCallStatus && applications[0]) {
-      logCallToDatabase(applications[0].id, phoneNumber, "completed");
-    }
-    handleCallCleanup();
-  };
-
-  const handleCallCleanup = () => {
-    callRef.current = null;
-    setActiveCall(null);
-    setShowCallStatus(false);
-    setCurrentCallSid("");
-    setCurrentCallPhone("");
-    fetchCandidateData(); // Refrescar historial
-  };
-
   useEffect(() => {
     const getCurrentUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
+      if (user) {
+        setUserId(user.id);
+      }
     };
     getCurrentUser();
 
-    if (id) fetchCandidateData();
+    if (id) {
+      fetchCandidateData();
+    }
 
     // Initialize Twilio Device
     const initializeTwilioDevice = async () => {
       try {
-        // CORREGIDO: "twiltoken " -> "twilio-token"
-        const { data, error } = await supabase.functions.invoke("twilio-token");
+        const { data, error } = await supabase.functions.invoke("ttoken");
         if (error) throw error;
 
         if (data?.token) {
@@ -222,16 +158,19 @@ const CandidateProfile = () => {
             codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
           });
 
-          device.on("registered", () => console.log("Twilio Device registered"));
+          device.on("registered", () => {
+            console.log("Twilio Device registered");
+          });
+
           device.on("error", (error) => {
-            console.error("Device error:", error);
-            // Ignorar errores de token expirado si ocurren al cerrar
+            console.error("Twilio Device error:", error);
+            toast.error("Telefonfejl: " + error.message);
           });
 
           device.on("incoming", (call) => {
             console.log("Incoming call:", call);
-            toast.info("Indgående opkald: " + call.parameters.From);
-            // Aquí podrías abrir un dialog para contestar
+            // Handle incoming calls - you can show a dialog or auto-answer
+            toast.info("Indgående opkald");
           });
 
           await device.register();
@@ -240,63 +179,94 @@ const CandidateProfile = () => {
         }
       } catch (err: any) {
         console.error("Error initializing Twilio Device:", err);
-        // No mostramos toast aquí para no spamear al cargar, solo log
       }
     };
 
     initializeTwilioDevice();
 
     return () => {
-      if (callRef.current) callRef.current.disconnect();
-      if (deviceRef.current) deviceRef.current.destroy();
+      // Cleanup
+      if (callRef.current) {
+        callRef.current.disconnect();
+      }
+      if (deviceRef.current) {
+        deviceRef.current.destroy();
+      }
     };
   }, [id]);
 
-  // ... (Resto de funciones fetchCandidateData, statusLabels, etc. IGUAL QUE ANTES) ...
   const fetchCandidateData = async () => {
-    // (Tu código original aquí, sin cambios)
     try {
+      // Fetch candidate
       const { data: candidateData, error: candidateError } = await supabase
         .from("candidates")
         .select("*")
         .eq("id", id)
         .single();
+
       if (candidateError) throw candidateError;
       setCandidate(candidateData);
+
+      // Mark candidate as viewed if not already viewed
       if (candidateData && !candidateData.first_viewed_at) {
         await supabase.from("candidates").update({ first_viewed_at: new Date().toISOString() }).eq("id", id);
       }
+
+      // Fetch teams
       const { data: teamsData, error: teamsError } = await supabase.from("teams").select("*").order("name");
+
       if (teamsError) throw teamsError;
       setTeams(teamsData || []);
+
+      // Fetch applications
       const { data: applicationsData, error: appsError } = await supabase
         .from("applications")
         .select("*")
         .eq("candidate_id", id)
         .order("application_date", { ascending: false });
+
       if (appsError) throw appsError;
       setApplications(applicationsData || []);
+
+      // Fetch communications across all applications
       const applicationIds = applicationsData?.map((app) => app.id) || [];
       if (applicationIds.length > 0) {
         const { data: commsData, error: commsError } = await supabase
           .from("communication_logs")
-          .select(`*, application:applications(role, application_date)`)
+          .select(
+            `
+            *,
+            application:applications(role, application_date)
+          `,
+          )
           .in("application_id", applicationIds)
           .order("created_at", { ascending: false });
+
         if (commsError) throw commsError;
         setCommunications(commsData || []);
+
+        // Fetch performance reviews
         const { data: reviewsData, error: reviewsError } = await supabase
           .from("performance_reviews")
-          .select(`*, application:applications(role)`)
+          .select(
+            `
+            *,
+            application:applications(role)
+          `,
+          )
           .in("application_id", applicationIds)
           .order("review_date", { ascending: false });
+
         if (reviewsError) throw reviewsError;
         setPerformanceReviews(reviewsData || []);
+
+        // Fetch candidate notes
         const { data: notesData, error: notesError } = await supabase
           .from("candidate_notes")
           .select("*")
           .eq("candidate_id", id)
           .order("created_at", { ascending: false });
+
         if (notesError) throw notesError;
         setCandidateNotes((notesData || []) as CandidateNote[]);
       }
@@ -316,10 +286,12 @@ const CandidateProfile = () => {
     ikke_ansat: "Ikke ansat",
     startet: "Startet",
   };
+
   const roleLabels: Record<string, string> = {
     fieldmarketing: "Fieldmarketing",
     salgskonsulent: "Salgskonsulent",
   };
+
   const statusColors: Record<string, string> = {
     ny: "bg-status-new/10 text-status-new border-status-new/20",
     telefon_screening: "bg-status-progress/10 text-status-progress border-status-progress/20",
@@ -330,33 +302,44 @@ const CandidateProfile = () => {
     afslag: "bg-status-rejected/10 text-status-rejected border-status-rejected/20",
     ghosted_cold: "bg-muted text-muted-foreground border-border",
   };
+
   const roleColors: Record<string, string> = {
     fieldmarketing: "bg-role-fieldmarketing/10 text-role-fieldmarketing border-role-fieldmarketing/20",
     salgskonsulent: "bg-role-salgskonsulent/10 text-role-salgskonsulent border-role-salgskonsulent/20",
   };
 
-  // ... (Resto de handlers handleStatusChange, etc. COPIAR IGUAL DEL ORIGINAL) ...
+  const getRatingColor = (rating: string) => {
+    if (rating === "green" || rating === "5" || rating === "4") return "text-status-success";
+    if (rating === "yellow" || rating === "3") return "text-status-warning";
+    return "text-status-rejected";
+  };
+
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
-    // ... (Tu código original)
     try {
+      // If changing to "ansat", check if team and hired_date are set
       if (newStatus === "ansat") {
         const application = applications.find((app) => app.id === applicationId);
         if (!application?.team_id) {
           toast.error("Du skal vælge et team før du kan sætte status til Ansat");
           return;
         }
+
+        // Check if hired_date is set, if not show dialog
         if (!application?.hired_date) {
           setPendingStatusChange({ applicationId, newStatus });
-          setHiredDate(new Date().toISOString().split("T")[0]);
+          setHiredDate(new Date().toISOString().split("T")[0]); // Default to today
           setShowHiredDateDialog(true);
           return;
         }
       }
+
       const { error } = await supabase
         .from("applications")
         .update({ status: newStatus as any })
         .eq("id", applicationId);
+
       if (error) throw error;
+
       toast.success("Status opdateret!");
       fetchCandidateData();
     } catch (error: any) {
@@ -366,17 +349,22 @@ const CandidateProfile = () => {
   };
 
   const handleConfirmHiredDate = async () => {
-    // ... (Tu código original)
     if (!pendingStatusChange || !hiredDate) {
       toast.error("Ansættelsesdato er påkrævet");
       return;
     }
+
     try {
       const { error } = await supabase
         .from("applications")
-        .update({ status: pendingStatusChange.newStatus as any, hired_date: hiredDate })
+        .update({
+          status: pendingStatusChange.newStatus as any,
+          hired_date: hiredDate,
+        })
         .eq("id", pendingStatusChange.applicationId);
+
       if (error) throw error;
+
       toast.success("Medarbejder markeret som ansat!");
       setShowHiredDateDialog(false);
       setPendingStatusChange(null);
@@ -389,13 +377,14 @@ const CandidateProfile = () => {
   };
 
   const handleRoleChange = async (applicationId: string, newRole: string) => {
-    // ... (Tu código original)
     try {
       const { error } = await supabase
         .from("applications")
         .update({ role: newRole as any })
         .eq("id", applicationId);
+
       if (error) throw error;
+
       toast.success("Rolle opdateret!");
       fetchCandidateData();
     } catch (error: any) {
@@ -403,14 +392,16 @@ const CandidateProfile = () => {
       console.error(error);
     }
   };
+
   const handleSourceChange = async (applicationId: string, newSource: string) => {
-    // ... (Tu código original)
     try {
       const { error } = await supabase
         .from("applications")
         .update({ source: newSource || null })
         .eq("id", applicationId);
+
       if (error) throw error;
+
       toast.success("Kilde opdateret!");
       fetchCandidateData();
     } catch (error: any) {
@@ -418,14 +409,16 @@ const CandidateProfile = () => {
       console.error(error);
     }
   };
+
   const handleTeamChange = async (applicationId: string, newTeamId: string) => {
-    // ... (Tu código original)
     try {
       const { error } = await supabase
         .from("applications")
         .update({ team_id: newTeamId || null })
         .eq("id", applicationId);
+
       if (error) throw error;
+
       toast.success("Team opdateret!");
       fetchCandidateData();
     } catch (error: any) {
@@ -439,6 +432,7 @@ const CandidateProfile = () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
       await supabase.from("communication_logs").insert({
         application_id: applicationId,
         type: "phone",
@@ -448,13 +442,14 @@ const CandidateProfile = () => {
         content: `Opkald til ${phoneNumber}`,
         created_by: user?.id,
       });
-      console.log("Call logged successfully");
+
+      console.log("Call logged successfully with outcome:", outcome);
     } catch (error) {
       console.error("Error logging call:", error);
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex h-screen">
         <Sidebar />
@@ -463,7 +458,9 @@ const CandidateProfile = () => {
         </div>
       </div>
     );
-  if (!candidate)
+  }
+
+  if (!candidate) {
     return (
       <div className="flex h-screen">
         <Sidebar />
@@ -475,6 +472,7 @@ const CandidateProfile = () => {
         </div>
       </div>
     );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -520,13 +518,83 @@ const CandidateProfile = () => {
                 <MessageCircle className="h-4 w-4 md:mr-2" />
                 <span className="hidden sm:inline ml-1">SMS</span>
               </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    if (!deviceRef.current) {
+                      toast.error("Telefon ikke klar. Vent venligst...");
+                      return;
+                    }
 
-              {/* BOTÓN DE LLAMADA CORREGIDO QUE USA LA FUNCIÓN UNIFICADA */}
-              <Button variant="outline" onClick={() => handleCall(candidate.phone)} className="flex-1 md:flex-initial">
+                    if (callRef.current) {
+                      toast.error("Et opkald er allerede i gang");
+                      return;
+                    }
+
+                    setCurrentCallPhone(candidate.phone);
+                    setShowCallStatus(true);
+
+                    const params = {
+                      To: candidate.phone,
+                    };
+
+                    const call = await deviceRef.current.connect({ params });
+                    callRef.current = call;
+                    setActiveCall(call);
+
+                    call.on("accept", () => {
+                      console.log("Call accepted");
+                      setCurrentCallSid(call.parameters.CallSid || "");
+                    });
+
+                    call.on("disconnect", () => {
+                      console.log("Call disconnected");
+                      callRef.current = null;
+                      setActiveCall(null);
+                      if (showCallStatus && applications[0]) {
+                        // Log the call
+                        logCallToDatabase(applications[0].id, candidate.phone, "completed");
+                      }
+                      setShowCallStatus(false);
+                      setCurrentCallSid("");
+                      setCurrentCallPhone("");
+                      fetchCandidateData();
+                    });
+
+                    call.on("cancel", () => {
+                      console.log("Call cancelled");
+                      callRef.current = null;
+                      setActiveCall(null);
+                      setShowCallStatus(false);
+                      setCurrentCallSid("");
+                      setCurrentCallPhone("");
+                    });
+
+                    call.on("error", (error) => {
+                      console.error("Call error:", error);
+                      toast.error("Opkaldsfejl: " + error.message);
+                      callRef.current = null;
+                      setActiveCall(null);
+                      setShowCallStatus(false);
+                      setCurrentCallSid("");
+                      setCurrentCallPhone("");
+                    });
+
+                    toast.success("Ringer op til kandidaten...");
+                  } catch (err: any) {
+                    console.error("Call error:", err);
+                    toast.error("Kunne ikke starte opkaldet: " + err.message);
+                    setShowCallStatus(false);
+                    callRef.current = null;
+                    setActiveCall(null);
+                  }
+                }}
+                className="flex-1 md:flex-initial"
+              >
                 <Phone className="h-4 w-4 md:mr-2" />
                 <span className="hidden sm:inline ml-1">Ring op</span>
               </Button>
-
               <Button onClick={() => setShowNewApplicationDialog(true)} className="w-full md:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Ny ansøgning
@@ -534,7 +602,9 @@ const CandidateProfile = () => {
             </div>
           </div>
 
+          {/* Main content grid with sidebar */}
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6 mt-6">
+            {/* Left column - Main content */}
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2">
@@ -552,15 +622,81 @@ const CandidateProfile = () => {
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Phone className="h-4 w-4" />
-                      {/* LINK DE TELÉFONO QUE USA LA MISMA FUNCIÓN DE LLAMADA */}
                       <button
-                        onClick={() => handleCall(candidate.phone)}
+                        onClick={async () => {
+                          try {
+                            if (!deviceRef.current) {
+                              toast.error("Telefon ikke klar. Vent venligst...");
+                              return;
+                            }
+
+                            if (callRef.current) {
+                              toast.error("Et opkald er allerede i gang");
+                              return;
+                            }
+
+                            setCurrentCallPhone(candidate.phone);
+                            setShowCallStatus(true);
+
+                            const params = {
+                              To: candidate.phone,
+                            };
+
+                            const call = await deviceRef.current.connect({ params });
+                            callRef.current = call;
+                            setActiveCall(call);
+
+                            call.on("accept", () => {
+                              console.log("Call accepted");
+                              setCurrentCallSid(call.parameters.CallSid || "");
+                            });
+
+                            call.on("disconnect", () => {
+                              console.log("Call disconnected");
+                              callRef.current = null;
+                              setActiveCall(null);
+                              if (showCallStatus && applications[0]) {
+                                logCallToDatabase(applications[0].id, candidate.phone, "completed");
+                              }
+                              setShowCallStatus(false);
+                              setCurrentCallSid("");
+                              setCurrentCallPhone("");
+                              fetchCandidateData();
+                            });
+
+                            call.on("cancel", () => {
+                              console.log("Call cancelled");
+                              callRef.current = null;
+                              setActiveCall(null);
+                              setShowCallStatus(false);
+                              setCurrentCallSid("");
+                              setCurrentCallPhone("");
+                            });
+
+                            call.on("error", (error) => {
+                              console.error("Call error:", error);
+                              toast.error("Opkaldsfejl: " + error.message);
+                              callRef.current = null;
+                              setActiveCall(null);
+                              setShowCallStatus(false);
+                              setCurrentCallSid("");
+                              setCurrentCallPhone("");
+                            });
+
+                            toast.success("Ringer op til kandidaten...");
+                          } catch (err: any) {
+                            console.error("Call error:", err);
+                            toast.error("Kunne ikke starte opkaldet: " + err.message);
+                            setShowCallStatus(false);
+                            callRef.current = null;
+                            setActiveCall(null);
+                          }
+                        }}
                         className="hover:text-primary hover:underline cursor-pointer text-left"
                       >
                         {candidate.phone}
                       </button>
                     </div>
-                    {/* ... (Resto del UI igual) ... */}
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       <div className="flex flex-col gap-1">
@@ -588,7 +724,7 @@ const CandidateProfile = () => {
                       </div>
                     </div>
 
-                    {/* UI Render Parts (Selects, etc) - Copy as is from previous code */}
+                    {/* Latest application details */}
                     {applications.length > 0 && (
                       <div className="pt-4 border-t">
                         <h4 className="font-medium mb-3">Nuværende ansøgning</h4>
@@ -695,6 +831,7 @@ const CandidateProfile = () => {
                       </div>
                     )}
 
+                    {/* Interview date section */}
                     {applications.length > 0 && (
                       <div className="pt-4 border-t">
                         <div className="flex items-center justify-between mb-2">
@@ -735,7 +872,6 @@ const CandidateProfile = () => {
                   </CardContent>
                 </Card>
 
-                {/* Overview Card (Estadisticas) */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Oversigt</CardTitle>
@@ -745,7 +881,9 @@ const CandidateProfile = () => {
                       <div className="text-sm text-muted-foreground mb-1">Total ansøgninger</div>
                       <div className="text-2xl font-bold">{applications.length}</div>
                     </div>
+
                     <Separator />
+
                     <div>
                       <h4 className="text-sm font-medium mb-3">Kommunikationsstatistik</h4>
                       <div className="space-y-3">
@@ -753,9 +891,11 @@ const CandidateProfile = () => {
                           const phoneCalls = communications.filter((c) => c.type === "phone");
                           const emails = communications.filter((c) => c.type === "email");
                           const smsMessages = communications.filter((c) => c.type === "sms");
+
                           const totalCalls = phoneCalls.length;
                           const totalEmails = emails.length;
                           const totalSms = smsMessages.length;
+
                           if (totalCalls === 0 && totalEmails === 0 && totalSms === 0) {
                             return (
                               <div className="text-sm text-muted-foreground text-center py-2">
@@ -763,6 +903,7 @@ const CandidateProfile = () => {
                               </div>
                             );
                           }
+
                           return (
                             <>
                               <div className="flex items-center justify-between text-sm">
@@ -786,13 +927,14 @@ const CandidateProfile = () => {
                 </Card>
               </div>
 
-              {/* Communication List */}
+              {/* Communication Section */}
               <div className="w-full">
                 <Card className="mb-4">
                   <CardHeader>
                     <CardTitle>Kommunikation</CardTitle>
                   </CardHeader>
                 </Card>
+
                 <div className="space-y-4">
                   {communications.length === 0 ? (
                     <Card>
@@ -841,6 +983,7 @@ const CandidateProfile = () => {
                                   Varighed: {Math.floor(comm.duration / 60)} min {comm.duration % 60} sek
                                 </div>
                               )}
+                              {/* Reply button for inbound SMS */}
                               {comm.type === "sms" && comm.direction === "inbound" && (
                                 <Button
                                   size="sm"
@@ -865,6 +1008,7 @@ const CandidateProfile = () => {
               </div>
             </div>
 
+            {/* Right column - Quick Notes Sidebar */}
             <div className="hidden xl:block sticky top-6 h-[calc(100vh-120px)]">
               <QuickNotesSidebar candidateId={candidate.id} notes={candidateNotes} onNotesUpdate={fetchCandidateData} />
             </div>
@@ -872,7 +1016,6 @@ const CandidateProfile = () => {
         </div>
       </div>
 
-      {/* Dialogs */}
       <NewApplicationDialog
         open={showNewApplicationDialog}
         onOpenChange={setShowNewApplicationDialog}
@@ -880,6 +1023,7 @@ const CandidateProfile = () => {
         candidateName={`${candidate.first_name} ${candidate.last_name}`}
         onSuccess={fetchCandidateData}
       />
+
       {showSoftphone && userId && (
         <Softphone
           userId={userId}
@@ -890,6 +1034,7 @@ const CandidateProfile = () => {
           }}
         />
       )}
+
       {candidate && (
         <EditCandidateDialog
           candidate={candidate}
@@ -899,6 +1044,16 @@ const CandidateProfile = () => {
         />
       )}
 
+      <NewApplicationDialog
+        open={showNewApplicationDialog}
+        onOpenChange={setShowNewApplicationDialog}
+        candidateId={id!}
+        candidateName={`${candidate?.first_name} ${candidate?.last_name}`}
+        onSuccess={() => {
+          fetchCandidateData();
+        }}
+      />
+
       {showCallStatus && applications[0] && (
         <CallStatusDialog
           candidateName={`${candidate.first_name} ${candidate.last_name}`}
@@ -907,8 +1062,15 @@ const CandidateProfile = () => {
           applicationId={applications[0].id}
           activeCall={activeCall}
           onHangup={async () => {
-            if (callRef.current) callRef.current.disconnect();
-            handleCallCleanup(); // Usar la función de limpieza
+            if (callRef.current) {
+              callRef.current.disconnect();
+            }
+            callRef.current = null;
+            setActiveCall(null);
+            setShowCallStatus(false);
+            setCurrentCallSid("");
+            setCurrentCallPhone("");
+            fetchCandidateData(); // Refresh to show new call log
             toast.success("Opkald afsluttet");
           }}
         />
@@ -922,11 +1084,12 @@ const CandidateProfile = () => {
           candidateName={`${candidate.first_name} ${candidate.last_name}`}
           applicationId={smsApplicationId}
           onSmsSent={() => {
-            fetchCandidateData();
+            fetchCandidateData(); // Refresh to show new SMS log
           }}
         />
       )}
 
+      {/* Hired Date Dialog */}
       <Dialog open={showHiredDateDialog} onOpenChange={setShowHiredDateDialog}>
         <DialogContent>
           <DialogHeader>
@@ -955,6 +1118,7 @@ const CandidateProfile = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Schedule Interview Dialog */}
       {applications.length > 0 && (
         <ScheduleInterviewDialog
           open={showScheduleInterviewDialog}
