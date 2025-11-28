@@ -1,5 +1,8 @@
 project_id = "vlspljhqyanpadbucmvq"
 
+[functions.twilio-voice-token]
+verify_jwt = false
+
 [functions.twiliotoken1]
 verify_jwt = false
 
