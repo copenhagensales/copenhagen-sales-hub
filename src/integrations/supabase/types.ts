@@ -35,6 +35,7 @@ export type Database = {
           role: Database["public"]["Enums"]["application_role"]
           source: string | null
           status: Database["public"]["Enums"]["application_status"]
+          sub_team: string | null
           team_id: string | null
           test_results_url: string | null
           updated_at: string
@@ -59,6 +60,7 @@ export type Database = {
           role: Database["public"]["Enums"]["application_role"]
           source?: string | null
           status?: Database["public"]["Enums"]["application_status"]
+          sub_team?: string | null
           team_id?: string | null
           test_results_url?: string | null
           updated_at?: string
@@ -83,6 +85,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["application_role"]
           source?: string | null
           status?: Database["public"]["Enums"]["application_status"]
+          sub_team?: string | null
           team_id?: string | null
           test_results_url?: string | null
           updated_at?: string

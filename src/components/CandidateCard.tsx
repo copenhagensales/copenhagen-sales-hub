@@ -54,6 +54,7 @@ interface Application {
   source?: string;
   notes?: string;
   team_id?: string;
+  sub_team?: string;
   hired_date?: string;
 }
 
@@ -219,9 +220,20 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
 
   const handleTeamChange = async (applicationId: string, newTeamId: string) => {
     try {
+      const app = applications.find(a => a.id === applicationId);
+      const oldTeam = teams.find(t => t.id === app?.team_id);
+      const newTeam = teams.find(t => t.id === newTeamId);
+      
+      const updates: any = { team_id: newTeamId || null };
+      
+      // Clear sub_team if switching away from United
+      if (oldTeam?.name === "United" && newTeam?.name !== "United") {
+        updates.sub_team = null;
+      }
+      
       const { error } = await supabase
         .from("applications")
-        .update({ team_id: newTeamId || null })
+        .update(updates)
         .eq("id", applicationId);
 
       if (error) throw error;
@@ -230,6 +242,23 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
       if (onUpdate) onUpdate();
     } catch (error: any) {
       toast.error("Kunne ikke opdatere team");
+      console.error(error);
+    }
+  };
+
+  const handleSubTeamChange = async (applicationId: string, newSubTeam: string) => {
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ sub_team: newSubTeam || null })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Underteam opdateret!");
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere underteam");
       console.error(error);
     }
   };
@@ -579,29 +608,56 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                     </div>
 
                     {teams.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          Team {app.status === "ansat" && <span className="text-destructive">*</span>}:
-                        </span>
-                        <Select
-                          value={app.team_id || "none"}
-                          onValueChange={(value) => handleTeamChange(app.id, value === "none" ? "" : value)}
-                        >
-                          <SelectTrigger className="h-7 w-auto gap-2 text-xs">
-                            <SelectValue>
-                              {teams.find(t => t.id === app.team_id)?.name || "Vælg team"}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover z-50">
-                            <SelectItem value="none">Ingen team</SelectItem>
-                            {teams.map(team => (
-                              <SelectItem key={team.id} value={team.id}>
-                                {team.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            Team {app.status === "ansat" && <span className="text-destructive">*</span>}:
+                          </span>
+                          <Select
+                            value={app.team_id || "none"}
+                            onValueChange={(value) => handleTeamChange(app.id, value === "none" ? "" : value)}
+                          >
+                            <SelectTrigger className="h-7 w-auto gap-2 text-xs">
+                              <SelectValue>
+                                {teams.find(t => t.id === app.team_id)?.name || "Vælg team"}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover z-50">
+                              <SelectItem value="none">Ingen team</SelectItem>
+                              {teams.map(team => (
+                                <SelectItem key={team.id} value={team.id}>
+                                  {team.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {app.team_id && teams.find(t => t.id === app.team_id)?.name === "United" && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Underteam:</span>
+                            <Select
+                              value={app.sub_team || "none"}
+                              onValueChange={(value) => handleSubTeamChange(app.id, value === "none" ? "" : value)}
+                            >
+                              <SelectTrigger className="h-7 w-auto gap-2 text-xs">
+                                <SelectValue>
+                                  {app.sub_team || "Vælg underteam"}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                <SelectItem value="none">Intet underteam</SelectItem>
+                                <SelectItem value="Tryg">Tryg</SelectItem>
+                                <SelectItem value="ASE">ASE</SelectItem>
+                                <SelectItem value="Finansforbundet">Finansforbundet</SelectItem>
+                                <SelectItem value="Business Danmark">Business Danmark</SelectItem>
+                                <SelectItem value="Codan">Codan</SelectItem>
+                                <SelectItem value="AKA">AKA</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {app.next_step && (

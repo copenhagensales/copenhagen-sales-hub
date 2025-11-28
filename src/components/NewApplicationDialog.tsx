@@ -36,6 +36,7 @@ export const NewApplicationDialog = ({
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("ny_ansoegning");
   const [teamId, setTeamId] = useState("");
+  const [subTeam, setSubTeam] = useState("");
   const [nextStep, setNextStep] = useState("");
   const [deadline, setDeadline] = useState("");
   const [teams, setTeams] = useState<any[]>([]);
@@ -94,6 +95,7 @@ export const NewApplicationDialog = ({
           source: source || undefined,
           notes: notes || undefined,
           team_id: teamId || undefined,
+          sub_team: subTeam || undefined,
           next_step: nextStep,
           deadline: deadline,
         } as any,
@@ -111,6 +113,7 @@ export const NewApplicationDialog = ({
       setNotes("");
       setStatus("startet");
       setTeamId("");
+      setSubTeam("");
       setNextStep("");
       setDeadline("");
     } catch (error: any) {
@@ -164,7 +167,18 @@ export const NewApplicationDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="team">Team {status === "ansat" && <span className="text-destructive">*</span>}</Label>
-            <Select value={teamId || "none"} onValueChange={(value) => setTeamId(value === "none" ? "" : value)}>
+            <Select value={teamId || "none"} onValueChange={(value) => {
+              const newTeamId = value === "none" ? "" : value;
+              setTeamId(newTeamId);
+              if (newTeamId) {
+                const selectedTeam = teams.find(t => t.id === newTeamId);
+                if (selectedTeam?.name !== "United") {
+                  setSubTeam("");
+                }
+              } else {
+                setSubTeam("");
+              }
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Vælg team" />
               </SelectTrigger>
@@ -178,6 +192,26 @@ export const NewApplicationDialog = ({
               </SelectContent>
             </Select>
           </div>
+
+          {teamId && teams.find(t => t.id === teamId)?.name === "United" && (
+            <div className="space-y-2">
+              <Label htmlFor="subteam">Underteam</Label>
+              <Select value={subTeam} onValueChange={setSubTeam}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Vælg underteam" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="">Intet underteam</SelectItem>
+                  <SelectItem value="Tryg">Tryg</SelectItem>
+                  <SelectItem value="ASE">ASE</SelectItem>
+                  <SelectItem value="Finansforbundet">Finansforbundet</SelectItem>
+                  <SelectItem value="Business Danmark">Business Danmark</SelectItem>
+                  <SelectItem value="Codan">Codan</SelectItem>
+                  <SelectItem value="AKA">AKA</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="source">Kilde</Label>
