@@ -17,6 +17,23 @@ interface CandidateImportData {
   application_date: string;
 }
 
+interface EmployeeData {
+  email: string;
+  team: string;
+  full_name: string;
+}
+
+// Team name mapping from employee data to database team names
+const teamMapping: Record<string, string | undefined> = {
+  'Team: United': 'United',
+  'Team: Eesy TM': 'Eesy TM',
+  'Team: Fieldmarketing': 'Fieldmarketing',
+  'Team: TDC': 'TDC Erhverv',
+  'Team: Relatel': 'Relatel',
+  'Relatel Kundeservice': 'Relatel',
+  'Rekruttering & SoMe': undefined, // Not a sales team
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -28,7 +45,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { candidates } = await req.json();
+    const { candidates, employees } = await req.json();
     
     if (!Array.isArray(candidates) || candidates.length === 0) {
       return new Response(
@@ -39,9 +56,22 @@ serve(async (req) => {
 
     console.log(`Starting bulk import of ${candidates.length} candidates`);
     
+    // Build email to team mapping from employee data
+    const emailToTeam = new Map<string, string>();
+    if (employees && Array.isArray(employees)) {
+      employees.forEach((emp: EmployeeData) => {
+        const mappedTeam = teamMapping[emp.team];
+        if (mappedTeam && emp.email) {
+          emailToTeam.set(emp.email.toLowerCase(), mappedTeam);
+        }
+      });
+      console.log(`Built team mapping for ${emailToTeam.size} employees`);
+    }
+    
     let successCount = 0;
     let errorCount = 0;
     let duplicateCount = 0;
+    let teamsAssigned = 0;
     const errors: string[] = [];
 
     for (const candidate of candidates as CandidateImportData[]) {
@@ -94,6 +124,25 @@ serve(async (req) => {
           mappedStatus = 'startet'; // Default status
         }
 
+        // Find team if candidate is "ansat" and exists in employee data
+        let teamId = null;
+        if (mappedStatus === 'ansat') {
+          const teamName = emailToTeam.get(candidate.email.toLowerCase());
+          if (teamName) {
+            const { data: teamData } = await supabase
+              .from('teams')
+              .select('id')
+              .ilike('name', teamName)
+              .maybeSingle();
+            
+            if (teamData) {
+              teamId = teamData.id;
+              teamsAssigned++;
+              console.log(`Assigned team ${teamName} to ${candidate.email}`);
+            }
+          }
+        }
+
         // Create application for the candidate - all as "salgskonsulent"
         const { error: applicationError } = await supabase
           .from('applications')
@@ -104,6 +153,8 @@ serve(async (req) => {
             source: candidate.source || 'Hjemmesiden',
             notes: candidate.notes || "",
             application_date: candidate.application_date || new Date().toISOString(),
+            team_id: teamId,
+            hired_date: mappedStatus === 'ansat' ? candidate.application_date || new Date().toISOString().split('T')[0] : null,
           });
 
         if (applicationError) {
@@ -122,7 +173,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Import completed: ${successCount} success, ${errorCount} errors, ${duplicateCount} duplicates`);
+    console.log(`Import completed: ${successCount} success, ${errorCount} errors, ${duplicateCount} duplicates, ${teamsAssigned} teams assigned`);
 
     return new Response(
       JSON.stringify({
@@ -132,6 +183,7 @@ serve(async (req) => {
           imported: successCount,
           duplicates: duplicateCount,
           errors: errorCount,
+          teamsAssigned: teamsAssigned,
         },
         errors: errors.length > 0 ? errors : undefined,
       }),
