@@ -442,6 +442,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_historical_candidate: {
+        Args: {
+          p_application_date: string
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_notes: string
+          p_phone: string
+          p_source: string
+          p_status: Database["public"]["Enums"]["application_status"]
+        }
+        Returns: Json
+      }
     }
     Enums: {
       application_role: "fieldmarketing" | "salgskonsulent"
