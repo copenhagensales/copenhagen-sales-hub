@@ -18,6 +18,7 @@ import Employees from "./pages/Employees";
 import Messages from "./pages/Messages";
 import Reports from "./pages/Reports";
 import UpcomingHires from "./pages/UpcomingHires";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -95,6 +96,10 @@ const App = () => {
             <Route
               path="/reports"
               element={session ? <Reports /> : <Navigate to="/auth" replace />}
+            />
+            <Route
+              path="/admin"
+              element={session ? <Admin /> : <Navigate to="/auth" replace />}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
