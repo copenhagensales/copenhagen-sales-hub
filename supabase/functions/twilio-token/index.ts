@@ -15,21 +15,19 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Length": "0",
-      },
+      headers: corsHeaders,
     });
   }
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
+  // Wrap everything in try-catch to ensure CORS headers are always returned
   try {
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get Twilio credentials from environment
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID");
@@ -90,6 +88,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    // Catch any errors and ensure CORS headers are always returned
     console.error("[Twilio Token] Error:", error);
     return new Response(
       JSON.stringify({
