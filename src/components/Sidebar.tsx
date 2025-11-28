@@ -123,9 +123,11 @@ export const Sidebar = () => {
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
   ];
 
-  const adminNavItem = { to: "/admin", icon: Shield, label: "Admin", adminOnly: true };
-  const smsTemplatesNavItem = { to: "/sms-templates", icon: MessageCircle, label: "SMS-skabeloner", adminOnly: true };
-  const emailTemplatesNavItem = { to: "/email-templates", icon: Mail, label: "Email-skabeloner", adminOnly: true };
+  const adminNavItems = [
+    { to: "/sms-templates", icon: MessageCircle, label: "SMS-skabeloner" },
+    { to: "/email-templates", icon: Mail, label: "Email-skabeloner" },
+    { to: "/admin", icon: Shield, label: "Admin" },
+  ];
 
   const SidebarContent = () => (
     <>
@@ -154,33 +156,18 @@ export const Sidebar = () => {
         
         {isAdmin && (
           <>
-            <NavLink
-              to={adminNavItem.to}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent transition-colors"
-              activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-              onClick={() => setOpen(false)}
-            >
-              <adminNavItem.icon className="h-5 w-5" />
-              <span>{adminNavItem.label}</span>
-            </NavLink>
-            <NavLink
-              to={smsTemplatesNavItem.to}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent transition-colors"
-              activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-              onClick={() => setOpen(false)}
-            >
-              <smsTemplatesNavItem.icon className="h-5 w-5" />
-              <span>{smsTemplatesNavItem.label}</span>
-            </NavLink>
-            <NavLink
-              to={emailTemplatesNavItem.to}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent transition-colors"
-              activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-              onClick={() => setOpen(false)}
-            >
-              <emailTemplatesNavItem.icon className="h-5 w-5" />
-              <span>{emailTemplatesNavItem.label}</span>
-            </NavLink>
+            {adminNavItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent transition-colors"
+                activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                onClick={() => setOpen(false)}
+              >
+                <item.icon className="h-5 w-5" />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
           </>
         )}
       </nav>
