@@ -607,17 +607,24 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
           </div>
         )}
 
-        {callStatus === "ready" && (
+        {(callStatus === "ready" || callStatus === "disconnected" || callStatus === "error") && (
           <div className="space-y-2">
             <Input
               type="tel"
               placeholder="Telefonnummer"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
+              disabled={callStatus !== "ready"}
             />
-            <Button onClick={makeCall} className="w-full" disabled={!phoneNumber}>
+            <Button
+              onClick={makeCall}
+              className="w-full"
+              // Deshabilitamos el botón si no está listo o no hay número
+              disabled={!phoneNumber || callStatus !== "ready"}
+              variant={callStatus === "error" ? "destructive" : "default"}
+            >
               <Phone className="h-4 w-4 mr-2" />
-              Ring op
+              {callStatus === "error" ? "Fejl - Prøv igen" : "Ring op"}
             </Button>
           </div>
         )}
