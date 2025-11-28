@@ -22,9 +22,9 @@ interface BulkImportDialogProps {
 
 interface ImportSummary {
   total: number;
-  imported: number;
-  duplicates: number;
-  errors: number;
+  applicationsCreated: number;
+  candidatesNotFound: number;
+  errors: string[];
   teamsAssigned?: number;
 }
 
@@ -114,8 +114,8 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
         console.log(`Parsed ${employees.length} employees for team mapping`);
       }
 
-      // Call bulk import edge function
-      const { data, error } = await supabase.functions.invoke('bulk-import-candidates', {
+      // Call edge function to add applications to existing candidates
+      const { data, error } = await supabase.functions.invoke('add-applications-to-existing', {
         body: { candidates, employees },
       });
 
@@ -126,19 +126,19 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
 
       console.log("Import result:", data);
 
-      setImportSummary(data.summary);
+      setImportSummary(data);
       
-      if (data.summary.imported > 0) {
-        toast.success(`${data.summary.imported} kandidater importeret!${data.summary.teamsAssigned > 0 ? ` ${data.summary.teamsAssigned} teams tildelt.` : ''}`);
+      if (data.applicationsCreated > 0) {
+        toast.success(`${data.applicationsCreated} ansøgninger oprettet!${data.teamsAssigned > 0 ? ` ${data.teamsAssigned} teams tildelt.` : ''}`);
         onSuccess();
       }
 
-      if (data.summary.duplicates > 0) {
-        toast.info(`${data.summary.duplicates} kandidater blev sprunget over (findes allerede)`);
+      if (data.candidatesNotFound > 0) {
+        toast.info(`${data.candidatesNotFound} kandidater blev ikke fundet i databasen`);
       }
 
-      if (data.summary.errors > 0) {
-        toast.warning(`${data.summary.errors} kandidater kunne ikke importeres`);
+      if (data.errors && data.errors.length > 0) {
+        toast.warning(`${data.errors.length} fejl opstod under importen`);
       }
 
     } catch (error: any) {
@@ -162,7 +162,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
         <DialogHeader>
           <DialogTitle>Bulk Import af Kandidater</DialogTitle>
           <DialogDescription>
-            Upload en Excel-fil (.xlsx) med tidligere kandidater. Alle importeres som salgskonsulenter.
+            Upload Excel-fil med kandidatansøgningsdata for at tilføje ansøgninger til eksisterende kandidater.
           </DialogDescription>
         </DialogHeader>
 
@@ -244,13 +244,23 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                 <div className="space-y-1">
                   <div className="font-semibold">Import resultat:</div>
                   <div>Total: {importSummary.total}</div>
-                  <div className="text-green-600">Importeret: {importSummary.imported}</div>
+                  <div className="text-green-600">Ansøgninger oprettet: {importSummary.applicationsCreated}</div>
                   {importSummary.teamsAssigned && importSummary.teamsAssigned > 0 && (
                     <div className="text-blue-600">Teams tildelt: {importSummary.teamsAssigned}</div>
                   )}
-                  <div className="text-blue-600">Duplikater: {importSummary.duplicates}</div>
-                  {importSummary.errors > 0 && (
-                    <div className="text-red-600">Fejl: {importSummary.errors}</div>
+                  <div className="text-orange-600">Kandidater ikke fundet: {importSummary.candidatesNotFound}</div>
+                  {importSummary.errors && importSummary.errors.length > 0 && (
+                    <div className="text-red-600">
+                      <div className="font-medium">Fejl ({importSummary.errors.length}):</div>
+                      <ul className="list-disc pl-5 text-xs mt-1">
+                        {importSummary.errors.slice(0, 3).map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                        {importSummary.errors.length > 3 && (
+                          <li>... og {importSummary.errors.length - 3} flere</li>
+                        )}
+                      </ul>
+                    </div>
                   )}
                 </div>
               </AlertDescription>
