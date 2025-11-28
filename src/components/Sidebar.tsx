@@ -17,7 +17,8 @@ import {
   CalendarCheck,
   Shield,
   MessageCircle,
-  Mail
+  Mail,
+  RotateCcw
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "@/assets/cph-sales-logo.png";
@@ -117,6 +118,7 @@ export const Sidebar = () => {
     { to: "/candidates", icon: Users, label: "Kandidater", badge: newCandidatesCount },
     { to: "/employees", icon: Briefcase, label: "Ansatte" },
     { to: "/upcoming-hires", icon: CalendarCheck, label: "Kommende ansættelser" },
+    { to: "/winback", icon: RotateCcw, label: "Winback" },
     { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
     { to: "/pipeline", icon: Kanban, label: "Pipeline" },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
