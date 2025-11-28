@@ -5,18 +5,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Mail, Check, Eye } from "lucide-react";
+import { MessageSquare, Mail, Check, Eye, RefreshCw, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
+import { SendEmailDialog } from "@/components/SendEmailDialog";
 
 interface Message {
   id: string;
   type: string;
   direction: string;
   content?: string;
+  outcome?: string;
   created_at: string;
   read: boolean;
   application_id: string;
@@ -27,6 +29,7 @@ interface Message {
       first_name: string;
       last_name: string;
       phone: string;
+      email: string;
     };
   };
 }
@@ -40,6 +43,15 @@ const Messages = () => {
   const [smsApplicationId, setSmsApplicationId] = useState<string>('');
   const [smsPhone, setSmsPhone] = useState<string>('');
   const [smsName, setSmsName] = useState<string>('');
+  
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailApplicationId, setEmailApplicationId] = useState<string>('');
+  const [emailAddress, setEmailAddress] = useState<string>('');
+  const [emailName, setEmailName] = useState<string>('');
+  const [emailSubject, setEmailSubject] = useState<string>('');
+  const [emailBody, setEmailBody] = useState<string>('');
+  const [emailReplyToId, setEmailReplyToId] = useState<string>('');
+  const [isFetchingEmails, setIsFetchingEmails] = useState(false);
 
   useEffect(() => {
     fetchMessages();
@@ -75,7 +87,7 @@ const Messages = () => {
           application:applications(
             candidate_id,
             role,
-            candidate:candidates(first_name, last_name, phone)
+            candidate:candidates(first_name, last_name, phone, email)
           )
         `)
         .eq("direction", "inbound")
@@ -134,6 +146,27 @@ const Messages = () => {
 
   const unreadCount = messages.filter(m => !m.read).length;
 
+  const handleFetchEmails = async () => {
+    setIsFetchingEmails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-emails");
+      if (error) throw error;
+      
+      const result = data as { processed: number; skipped: number };
+      if (result.processed > 0) {
+        toast.success(`${result.processed} nye emails hentet`);
+        fetchMessages();
+      } else {
+        toast.info("Ingen nye emails");
+      }
+    } catch (error: any) {
+      console.error("Error fetching emails:", error);
+      toast.error("Kunne ikke hente emails");
+    } finally {
+      setIsFetchingEmails(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
@@ -144,11 +177,23 @@ const Messages = () => {
               <h1 className="text-3xl font-bold">Beskeder</h1>
               <p className="text-muted-foreground">Håndter indgående SMS og emails</p>
             </div>
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="text-lg px-3 py-1">
-                {unreadCount} ulæste
-              </Badge>
-            )}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFetchEmails}
+                disabled={isFetchingEmails}
+              >
+                {isFetchingEmails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {!isFetchingEmails && <RefreshCw className="mr-2 h-4 w-4" />}
+                Hent nye emails
+              </Button>
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="text-lg px-3 py-1">
+                  {unreadCount} ulæste
+                </Badge>
+              )}
+            </div>
           </div>
 
           <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'unread')} className="w-full">
@@ -246,6 +291,29 @@ const Messages = () => {
                                 </Button>
                               )}
 
+                              {message.type === "email" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEmailApplicationId(message.application_id);
+                                    setEmailAddress((message.application.candidate as any).email || '');
+                                    setEmailName(candidateName);
+                                    // Parse subject and body from outcome field
+                                    const outcome = message.outcome || '';
+                                    const subjectMatch = outcome.match(/Subject: (.+?)\n/);
+                                    const originalSubject = subjectMatch ? subjectMatch[1] : '';
+                                    setEmailSubject(originalSubject.startsWith('Re: ') ? originalSubject : `Re: ${originalSubject}`);
+                                    setEmailBody(`\n\n--- Original besked ---\n${outcome}`);
+                                    setEmailReplyToId(message.content || ''); // content contains internetMessageId
+                                    setShowEmailDialog(true);
+                                  }}
+                                >
+                                  <Mail className="h-3.5 w-3.5 mr-1.5" />
+                                  Svar
+                                </Button>
+                              )}
+
                               {!message.read ? (
                                 <Button
                                   size="sm"
@@ -285,6 +353,21 @@ const Messages = () => {
         applicationId={smsApplicationId}
         onSmsSent={() => {
           setShowSmsDialog(false);
+          fetchMessages();
+        }}
+      />
+
+      <SendEmailDialog
+        open={showEmailDialog}
+        onOpenChange={setShowEmailDialog}
+        candidateEmail={emailAddress}
+        candidateName={emailName}
+        applicationId={emailApplicationId}
+        initialSubject={emailSubject}
+        initialBody={emailBody}
+        replyToMessageId={emailReplyToId}
+        onEmailSent={() => {
+          setShowEmailDialog(false);
           fetchMessages();
         }}
       />
