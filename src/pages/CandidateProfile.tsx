@@ -126,6 +126,9 @@ const CandidateProfile = () => {
   const [smsApplicationId, setSmsApplicationId] = useState<string>("");
   const [showScheduleInterviewDialog, setShowScheduleInterviewDialog] = useState(false);
   const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<string>("");
+  const [showEditHiredDateDialog, setShowEditHiredDateDialog] = useState(false);
+  const [editHiredDate, setEditHiredDate] = useState<string>("");
+  const [editingApplicationId, setEditingApplicationId] = useState<string>("");
   const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const deviceRef = useRef<Device | null>(null);
@@ -423,6 +426,31 @@ const CandidateProfile = () => {
       fetchCandidateData();
     } catch (error: any) {
       toast.error("Kunne ikke opdatere team");
+      console.error(error);
+    }
+  };
+
+  const handleEditHiredDate = async () => {
+    if (!editHiredDate || !editingApplicationId) {
+      toast.error("Ansættelsesdato er påkrævet");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ hired_date: editHiredDate })
+        .eq("id", editingApplicationId);
+
+      if (error) throw error;
+
+      toast.success("Opstartsdato opdateret!");
+      setShowEditHiredDateDialog(false);
+      setEditHiredDate("");
+      setEditingApplicationId("");
+      fetchCandidateData();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere opstartsdato");
       console.error(error);
     }
   };
@@ -831,34 +859,70 @@ const CandidateProfile = () => {
                       </div>
                     )}
 
-                    {/* Interview date section */}
+                    {/* Interview date or Hired date section based on status */}
                     {applications.length > 0 && (
                       <div className="pt-4 border-t">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">Jobsamtale</h4>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedApplicationForInterview(applications[0].id);
-                              setShowScheduleInterviewDialog(true);
-                            }}
-                          >
-                            <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                            {applications[0].interview_date ? "Rediger" : "Planlæg"}
-                          </Button>
-                        </div>
-                        {applications[0].interview_date ? (
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Planlagt: </span>
-                            <span className="font-medium">
-                              {format(new Date(applications[0].interview_date), "d. MMMM yyyy 'kl.' HH:mm", {
-                                locale: da,
-                              })}
-                            </span>
-                          </div>
+                        {applications[0].status === "ansat" ? (
+                          // Show hired date for employed candidates
+                          <>
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-medium">Opstartsdato</h4>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingApplicationId(applications[0].id);
+                                  setEditHiredDate(applications[0].hired_date || new Date().toISOString().split('T')[0]);
+                                  setShowEditHiredDateDialog(true);
+                                }}
+                              >
+                                <Edit className="h-3.5 w-3.5 mr-1.5" />
+                                Rediger
+                              </Button>
+                            </div>
+                            {applications[0].hired_date ? (
+                              <div className="text-sm">
+                                <span className="text-muted-foreground">Startdato: </span>
+                                <span className="font-medium">
+                                  {format(new Date(applications[0].hired_date), "d. MMMM yyyy", {
+                                    locale: da,
+                                  })}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">Ingen opstartsdato angivet</p>
+                            )}
+                          </>
                         ) : (
-                          <p className="text-sm text-muted-foreground">Ingen samtale planlagt</p>
+                          // Show interview date for non-employed candidates
+                          <>
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-medium">Jobsamtale</h4>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedApplicationForInterview(applications[0].id);
+                                  setShowScheduleInterviewDialog(true);
+                                }}
+                              >
+                                <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                                {applications[0].interview_date ? "Rediger" : "Planlæg"}
+                              </Button>
+                            </div>
+                            {applications[0].interview_date ? (
+                              <div className="text-sm">
+                                <span className="text-muted-foreground">Planlagt: </span>
+                                <span className="font-medium">
+                                  {format(new Date(applications[0].interview_date), "d. MMMM yyyy 'kl.' HH:mm", {
+                                    locale: da,
+                                  })}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">Ingen samtale planlagt</p>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -1128,6 +1192,35 @@ const CandidateProfile = () => {
           onSuccess={fetchCandidateData}
         />
       )}
+
+      {/* Edit Hired Date Dialog */}
+      <Dialog open={showEditHiredDateDialog} onOpenChange={setShowEditHiredDateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rediger opstartsdato</DialogTitle>
+            <DialogDescription>Opdater medarbejderens startdato</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Opstartsdato *</Label>
+              <Input type="date" value={editHiredDate} onChange={(e) => setEditHiredDate(e.target.value)} required />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditHiredDateDialog(false);
+                  setEditHiredDate("");
+                  setEditingApplicationId("");
+                }}
+              >
+                Annuller
+              </Button>
+              <Button onClick={handleEditHiredDate}>Gem ændringer</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
