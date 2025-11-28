@@ -142,6 +142,15 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
       console.error("Error in lookupCandidate:", error);
     }
   };
+  useEffect(() => {
+    if (callStatus === "disconnected" || callStatus === "error") {
+      const timer = setTimeout(() => {
+        setCallStatus("ready");
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [callStatus]);
 
   useEffect(() => {
     const initializeTwilio = async () => {
