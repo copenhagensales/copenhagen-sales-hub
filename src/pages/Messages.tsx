@@ -78,6 +78,31 @@ const Messages = () => {
     };
   }, [filter]);
 
+  // Auto-fetch emails every 5 minutes
+  useEffect(() => {
+    const fetchEmailsQuietly = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("fetch-emails");
+        if (error) throw error;
+        
+        const result = data as { processed: number; skipped: number };
+        if (result.processed > 0) {
+          fetchMessages();
+        }
+      } catch (error: any) {
+        console.error("Background email fetch failed:", error);
+      }
+    };
+
+    // Initial fetch
+    fetchEmailsQuietly();
+
+    // Set up interval for every 5 minutes (300000ms)
+    const intervalId = setInterval(fetchEmailsQuietly, 300000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   const fetchMessages = async () => {
     try {
       let query = supabase
