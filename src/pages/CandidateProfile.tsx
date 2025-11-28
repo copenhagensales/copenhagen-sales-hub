@@ -7,6 +7,7 @@ import { EditCandidateDialog } from "@/components/EditCandidateDialog";
 import { Softphone } from "@/components/Softphone";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
+import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { QuickNotesSidebar } from "@/components/QuickNotesSidebar";
 import { CommunicationTimeline } from "@/components/CommunicationTimeline";
 import { ScheduleInterviewDialog } from "@/components/ScheduleInterviewDialog";
@@ -124,6 +125,8 @@ const CandidateProfile = () => {
   const [currentCallPhone, setCurrentCallPhone] = useState<string>("");
   const [showSmsDialog, setShowSmsDialog] = useState(false);
   const [smsApplicationId, setSmsApplicationId] = useState<string>("");
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailApplicationId, setEmailApplicationId] = useState<string>("");
   const [showScheduleInterviewDialog, setShowScheduleInterviewDialog] = useState(false);
   const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<string>("");
   const [showEditHiredDateDialog, setShowEditHiredDateDialog] = useState(false);
@@ -538,7 +541,14 @@ const CandidateProfile = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => window.open(`mailto:${candidate.email}`)}
+                onClick={() => {
+                  if (applications.length > 0) {
+                    setEmailApplicationId(applications[0].id);
+                    setShowEmailDialog(true);
+                  } else {
+                    toast.error("Ingen ansøgninger fundet");
+                  }
+                }}
                 className="flex-1 md:flex-initial"
               >
                 <Mail className="h-4 w-4 md:mr-2" />
@@ -1173,6 +1183,19 @@ const CandidateProfile = () => {
           applicationId={smsApplicationId}
           onSmsSent={() => {
             fetchCandidateData(); // Refresh to show new SMS log
+          }}
+        />
+      )}
+
+      {showEmailDialog && candidate && (
+        <SendEmailDialog
+          open={showEmailDialog}
+          onOpenChange={setShowEmailDialog}
+          candidateEmail={candidate.email}
+          candidateName={`${candidate.first_name} ${candidate.last_name}`}
+          applicationId={emailApplicationId}
+          onEmailSent={() => {
+            fetchCandidateData(); // Refresh to show new email log
           }}
         />
       )}
