@@ -14,6 +14,7 @@ serve(async (req) => {
   }
 
   try {
+    console.log("viva");
     // 2. Obtener credenciales
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID");
