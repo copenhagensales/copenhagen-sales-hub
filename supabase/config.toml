@@ -1,6 +1,6 @@
 project_id = "vlspljhqyanpadbucmvq"
 
-[functions.twilio-token-1]
+[functions.twiliotoken1]
 verify_jwt = false
 
 [functions.twiltoken]
