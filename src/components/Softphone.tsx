@@ -314,7 +314,7 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber }: SoftphoneProp
       toast({ description: "Testing Twilio credentials..." });
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const url = `${supabaseUrl}/functions/v1/twiliotoken1`;
+      const url = `${supabaseUrl}/functions/v1/twilio-token-1`;
 
       console.log("[Test] Calling:", url);
 
