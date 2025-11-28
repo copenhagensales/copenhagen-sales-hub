@@ -157,6 +157,36 @@ export default function Admin() {
     }
   };
 
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    if (!confirm(`Er du sikker på, at du vil slette brugeren ${userEmail}?`)) {
+      return;
+    }
+
+    try {
+      // Delete user roles first
+      const { error: rolesError } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId);
+
+      if (rolesError) throw rolesError;
+
+      // Delete profile
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+
+      toast.success("Bruger slettet");
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast.error("Kunne ikke slette bruger");
+    }
+  };
+
   const roleLabels: Record<string, string> = {
     admin: "Admin",
     hiring_manager: "Hiring Manager",
@@ -331,19 +361,29 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {(["admin", "hiring_manager", "interviewer"] as const).map((role) => (
-                        <Button
-                          key={role}
-                          size="sm"
-                          variant={user.roles.includes(role) ? "default" : "outline"}
-                          onClick={() =>
-                            handleToggleRole(user.id, role, user.roles.includes(role))
-                          }
-                        >
-                          {user.roles.includes(role) ? "Fjern" : "Tilføj"} {roleLabels[role]}
-                        </Button>
-                      ))}
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {(["admin", "hiring_manager", "interviewer"] as const).map((role) => (
+                          <Button
+                            key={role}
+                            size="sm"
+                            variant={user.roles.includes(role) ? "default" : "outline"}
+                            onClick={() =>
+                              handleToggleRole(user.id, role, user.roles.includes(role))
+                            }
+                          >
+                            {user.roles.includes(role) ? "Fjern" : "Tilføj"} {roleLabels[role]}
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteUser(user.id, user.email)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Slet
+                      </Button>
                     </div>
                   </div>
                 ))}
