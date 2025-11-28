@@ -120,7 +120,6 @@ export const Sidebar = () => {
     { to: "/upcoming-hires", icon: CalendarCheck, label: "Kommende ansættelser" },
     { to: "/winback", icon: RotateCcw, label: "Winback" },
     { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
-    { to: "/pipeline", icon: Kanban, label: "Pipeline" },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
   ];
 

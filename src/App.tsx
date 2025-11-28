@@ -97,10 +97,6 @@ const App = () => {
               element={session ? <Winback /> : <Navigate to="/auth" replace />}
             />
             <Route
-              path="/pipeline"
-              element={session ? <Dashboard /> : <Navigate to="/auth" replace />}
-            />
-            <Route
               path="/reports"
               element={session ? <Reports /> : <Navigate to="/auth" replace />}
             />
