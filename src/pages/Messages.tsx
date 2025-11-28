@@ -259,9 +259,9 @@ const Messages = () => {
                               </span>
                             </div>
 
-                            {message.content && (
-                              <p className="text-sm p-3 bg-muted/30 rounded border">
-                                {message.content}
+                            {(message.type === "email" ? message.outcome : message.content) && (
+                              <p className="text-sm p-3 bg-muted/30 rounded border whitespace-pre-wrap">
+                                {message.type === "email" ? message.outcome : message.content}
                               </p>
                             )}
 
