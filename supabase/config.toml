@@ -1,5 +1,8 @@
 project_id = "vlspljhqyanpadbucmvq"
 
+[functions.twiliotoken]
+verify_jwt = false
+
 [functions.twiltoken]
 verify_jwt = false
 
