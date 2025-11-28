@@ -28,11 +28,13 @@ export const Sidebar = () => {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [newCandidatesCount, setNewCandidatesCount] = useState(0);
+  const [winbackCount, setWinbackCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchUnreadCount();
     fetchNewCandidatesCount();
+    fetchWinbackCount();
     checkAdminRole();
 
     // Subscribe to changes in communication_logs
@@ -64,6 +66,7 @@ export const Sidebar = () => {
         },
         () => {
           fetchNewCandidatesCount();
+          fetchWinbackCount();
         }
       )
       .subscribe();
@@ -94,6 +97,15 @@ export const Sidebar = () => {
     setNewCandidatesCount(count || 0);
   };
 
+  const fetchWinbackCount = async () => {
+    const { count } = await supabase
+      .from('applications')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['ghostet', 'takket_nej', 'interesseret_i_kundeservice']);
+
+    setWinbackCount(count || 0);
+  };
+
   const checkAdminRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -119,7 +131,7 @@ export const Sidebar = () => {
     { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
     { to: "/employees", icon: Briefcase, label: "Ansatte" },
     { to: "/upcoming-hires", icon: CalendarCheck, label: "Kommende ansættelser" },
-    { to: "/winback", icon: RotateCcw, label: "Winback" },
+    { to: "/winback", icon: RotateCcw, label: "Winback", badge: winbackCount },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
   ];
 
