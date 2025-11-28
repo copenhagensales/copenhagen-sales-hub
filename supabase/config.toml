@@ -1,6 +1,6 @@
 project_id = "vlspljhqyanpadbucmvq"
 
-[functions.ttoke]
+[functions.ttoken]
 verify_jwt = false
 
 [functions.twilio-token]

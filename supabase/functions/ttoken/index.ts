@@ -40,7 +40,7 @@ serve(async (req) => {
       },
     };
 
-    const header = { alg: "HS256", typ: "JWT", cty: "twilio-fpa;v=1" };
+    const header = { alg: "HS256" as const, typ: "JWT", cty: "twilio-fpa;v=1" };
 
     const key = await crypto.subtle.importKey(
       "raw",
@@ -57,7 +57,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
