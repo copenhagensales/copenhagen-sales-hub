@@ -140,7 +140,7 @@ const Winback = () => {
       const { data: applications, error: appsError } = await supabase
         .from("applications")
         .select("*")
-        .eq("status", activeTab as "ghostet" | "takket_nej")
+        .eq("status", activeTab as "ghostet" | "takket_nej" | "interesseret_i_kundeservice")
         .order("application_date", { ascending: false });
 
       if (appsError) throw appsError;
@@ -231,9 +231,10 @@ const Winback = () => {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsList className="grid w-full max-w-2xl grid-cols-3">
                 <TabsTrigger value="ghostet">Ghostet</TabsTrigger>
                 <TabsTrigger value="takket_nej">Takket nej</TabsTrigger>
+                <TabsTrigger value="interesseret_i_kundeservice">Interesseret i kundeservice</TabsTrigger>
               </TabsList>
 
               <div className="mt-6 space-y-4">
@@ -307,6 +308,38 @@ const Winback = () => {
                         {searchTerm 
                           ? "Ingen kandidater matchede din søgning" 
                           : "Ingen kandidater der har takket nej endnu"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {sortedCandidates.map((item) => (
+                        <CandidateCard
+                          key={item.candidate.id}
+                          candidate={item.candidate}
+                          applications={item.applications}
+                          teams={teams}
+                          onUpdate={fetchCandidates}
+                          deviceRef={deviceRef}
+                          callRef={callRef}
+                          activeCall={activeCall}
+                          setActiveCall={setActiveCall}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="interesseret_i_kundeservice" className="mt-0">
+                  {loading ? (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground">Indlæser kandidater...</p>
+                    </div>
+                  ) : sortedCandidates.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground">
+                        {searchTerm 
+                          ? "Ingen kandidater matchede din søgning" 
+                          : "Ingen kandidater interesseret i kundeservice endnu"}
                       </p>
                     </div>
                   ) : (
