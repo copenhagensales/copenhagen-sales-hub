@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // @ts-ignore - Import from esm.sh
-import twilio from "https://esm.sh/twilio@5.3.5";
-
+import twilio from "npm:twilio@5.3.5";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "OPTIONS, POST",
