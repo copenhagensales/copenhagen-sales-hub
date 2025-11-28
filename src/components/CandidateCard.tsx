@@ -40,6 +40,7 @@ import { format, differenceInHours, differenceInDays } from "date-fns";
 import { da } from "date-fns/locale";
 import { Softphone } from "@/components/Softphone";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
+import { SendSmsDialog } from "@/components/SendSmsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -104,6 +105,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showCallStatus, setShowCallStatus] = useState(false);
+  const [showSmsDialog, setShowSmsDialog] = useState(false);
   const [currentCallSid, setCurrentCallSid] = useState<string>('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showHiredDateDialog, setShowHiredDateDialog] = useState(false);
@@ -426,7 +428,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/messages?candidate=${candidate.id}`);
+                      setShowSmsDialog(true);
                     }}
                     className="h-7 md:h-8 text-xs"
                   >
@@ -640,6 +642,19 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
             setCurrentCallSid('');
             if (onUpdate) onUpdate(); // Refresh parent to show new call log
             toast.success("Opkald afsluttet");
+          }}
+        />
+      )}
+
+      {showSmsDialog && applications[0] && (
+        <SendSmsDialog
+          open={showSmsDialog}
+          onOpenChange={setShowSmsDialog}
+          candidateName={`${candidate.first_name} ${candidate.last_name}`}
+          candidatePhone={candidate.phone}
+          applicationId={applications[0].id}
+          onSmsSent={() => {
+            if (onUpdate) onUpdate(); // Refresh parent to show new SMS log
           }}
         />
       )}
