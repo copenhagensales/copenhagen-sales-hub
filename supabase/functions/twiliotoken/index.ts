@@ -26,7 +26,6 @@ serve(async (req) => {
     // Si no es Twilio, asumimos que es tu React App pidiendo un TOKEN
     console.log("💻 Petición recibida desde FRONTEND (Generando Token JSON)");
     return await handleTokenRequest(req);
-
   } catch (error) {
     console.error("❌ Error General:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
@@ -41,18 +40,16 @@ async function handleTwilioVoiceRequest(req: Request) {
   // Leemos los datos que envía Twilio
   const formData = await req.formData();
   const to = formData.get("To");
-  
-  // --- CONFIGURACIÓN IMPORTANTE ---
-  // Intenta leer la variable de entorno. Si falla, usa el número escrito aquí.
-  // IMPORTANTE: CAMBIA EL "+1234567890" POR TU NÚMERO DE TWILIO REAL
-  const FALLBACK_CALLER_ID = "+1234567890"; 
-  const callerId = Deno.env.get("TWILIO_CALLER_NUMBER") || FALLBACK_CALLER_ID;
+
+  const FALLBACK_CALLER_ID = "+15416562941";
+  //Deno.env.get("TWILIO_CALLER_NUMBER") ||
+  const callerId = FALLBACK_CALLER_ID;
 
   console.log(`Intentando conectar llamada hacia: ${to} desde: ${callerId}`);
 
   if (!to) {
     return new Response("<Response><Say>Error: No destination number found.</Say></Response>", {
-      headers: { "Content-Type": "text/xml" }
+      headers: { "Content-Type": "text/xml" },
     });
   }
 
@@ -66,9 +63,9 @@ async function handleTwilioVoiceRequest(req: Request) {
 
   return new Response(twiml, {
     status: 200,
-    headers: { 
+    headers: {
       "Content-Type": "text/xml",
-      ...corsHeaders 
+      ...corsHeaders,
     },
   });
 }
@@ -86,7 +83,7 @@ async function handleTokenRequest(req: Request) {
 
   // Identidad por defecto si no viene en el body
   let identity = "user_" + Math.floor(Math.random() * 1000);
-  
+
   try {
     const body = await req.json();
     if (body?.identity) identity = body.identity;
@@ -104,20 +101,20 @@ async function handleTokenRequest(req: Request) {
       identity: identity,
       voice: {
         incoming: { allow: true },
-        outgoing: { application_sid: twimlAppSid }
-      }
-    }
+        outgoing: { application_sid: twimlAppSid },
+      },
+    },
   };
 
   const header = { alg: "HS256" as const, typ: "JWT", cty: "twilio-fpa;v=1" };
-  
+
   // Firmar el token
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(apiKeySecret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
 
   const token = await create(header, payload, key);
