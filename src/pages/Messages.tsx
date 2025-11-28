@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Mail, Check, Eye, RefreshCw, Loader2 } from "lucide-react";
+import { MessageSquare, Mail, Check, Eye, RefreshCw, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
 import { toast } from "sonner";
@@ -193,6 +193,23 @@ const Messages = () => {
       fetchMessages();
     } catch (error: any) {
       toast.error("Kunne ikke markere som ulæst");
+      console.error(error);
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from("communication_logs")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+
+      toast.success("Besked slettet");
+      fetchMessages();
+    } catch (error: any) {
+      toast.error("Kunne ikke slette besked");
       console.error(error);
     }
   };
@@ -390,13 +407,23 @@ const Messages = () => {
                                   Markér som læst
                                 </Button>
                               ) : (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => markAsUnread(message.id)}
-                                >
-                                  Markér som ulæst
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => markAsUnread(message.id)}
+                                  >
+                                    Markér som ulæst
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => deleteMessage(message.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                    Slet
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </div>
