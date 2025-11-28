@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Usamos djwt que es nativa para Deno, en lugar de la librería pesada de Twilio
 import { create, getNumericDate } from "https://deno.land/x/djwt@v2.9/mod.ts";
 
 const corsHeaders = {
@@ -9,6 +10,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   // 1. Manejo de CORS (Preflight)
+  // Es importante devolver 204 No Content, no null con 200
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -33,23 +35,26 @@ serve(async (req) => {
       throw new Error("Faltan credenciales de Twilio en .env");
     }
 
-    // 4. Determinar identidad (dinámica o fija)
+    // 4. Determinar identidad
+    // Intentamos leer del body, si falla usamos 'agent'
     let identity = "agent";
     try {
       const body = await req.json();
-      if (body.identity) identity = body.identity;
+      if (body?.identity) identity = body.identity;
     } catch (e) {
-      // Si falla el parseo del body, usamos 'agent' por defecto
+      // Body vacío o inválido, continuamos con default
     }
-    console.log("[Twilio] Generando token para:", identity);
 
-    // 5. CONSTRUCCIÓN MANUAL DEL TOKEN (Sin librería 'twilio')
-    // Twilio requiere una estructura específica para los 'grants'
+    console.log(`[Twilio] Generando token para identidad: ${identity}`);
+
+    // 5. CONSTRUCCIÓN MANUAL DEL TOKEN
+    // Esto reemplaza a la librería 'twilio' y elimina el error de 'Object prototype'
+
     const payload = {
       jti: apiKeySid + "-" + Date.now(),
       iss: apiKeySid,
       sub: accountSid,
-      exp: getNumericDate(60 * 60), // Expira en 1 hora
+      exp: getNumericDate(60 * 60), // 1 hora de validez
       grants: {
         identity: identity,
         voice: {
@@ -59,14 +64,13 @@ serve(async (req) => {
       },
     };
 
-    // Header específico que pide Twilio
     const header = {
       alg: "HS256",
       typ: "JWT",
       cty: "twilio-fpa;v=1",
     };
 
-    // Importar la clave secreta para firmar
+    // Importar la clave secreta usando Web Crypto API (Nativo del navegador/Deno)
     const key = await crypto.subtle.importKey(
       "raw",
       new TextEncoder().encode(apiKeySecret),
@@ -75,17 +79,17 @@ serve(async (req) => {
       ["sign"],
     );
 
-    // Firmar el token usando djwt
+    // Firmar el token
     const token = await create(header, payload, key);
 
-    console.log("[Twilio] Token generado con éxito");
+    console.log("[Twilio] Token generado correctamente");
 
     return new Response(JSON.stringify({ token }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("[Twilio] Error fatal:", error);
+    console.error("[Twilio] Error:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Error desconocido",
