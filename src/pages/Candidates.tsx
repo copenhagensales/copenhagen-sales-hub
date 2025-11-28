@@ -314,6 +314,10 @@ const Candidates = () => {
                   applications={applications}
                   teams={teams}
                   onUpdate={fetchCandidates}
+                  deviceRef={deviceRef}
+                  callRef={callRef}
+                  activeCall={activeCall}
+                  setActiveCall={setActiveCall}
                 />
               ))
             )}

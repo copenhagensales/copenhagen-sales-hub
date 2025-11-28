@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, MutableRefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,7 @@ import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Device, Call } from "@twilio/voice-sdk";
 
 interface Application {
   id: string;
@@ -72,6 +73,10 @@ interface CandidateCardProps {
   applications: Application[];
   teams?: any[];
   onUpdate?: () => void;
+  deviceRef?: MutableRefObject<Device | null>;
+  callRef?: MutableRefObject<Call | null>;
+  activeCall?: Call | null;
+  setActiveCall?: (call: Call | null) => void;
 }
 
 const statusLabels: Record<string, string> = {
@@ -102,12 +107,13 @@ const roleColors: Record<string, string> = {
   salgskonsulent: "bg-role-salgskonsulent/10 text-role-salgskonsulent border-role-salgskonsulent/20",
 };
 
-export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }: CandidateCardProps) => {
+export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, deviceRef, callRef, activeCall, setActiveCall }: CandidateCardProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showCallStatus, setShowCallStatus] = useState(false);
   const [showSmsDialog, setShowSmsDialog] = useState(false);
   const [currentCallSid, setCurrentCallSid] = useState<string>('');
+  const [currentCallPhone, setCurrentCallPhone] = useState<string>('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showHiredDateDialog, setShowHiredDateDialog] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ applicationId: string; newStatus: string } | null>(null);
@@ -149,26 +155,94 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
     window.location.href = `mailto:${candidate.email}`;
   };
 
+  const logCallToDatabase = async (applicationId: string, phoneNumber: string, outcome: string, duration?: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      await supabase.from("communication_logs").insert({
+        application_id: applicationId,
+        type: "phone",
+        direction: "outbound",
+        duration: duration,
+        outcome: outcome,
+        content: `Opkald til ${phoneNumber}`,
+        created_by: user?.id,
+      });
+
+      console.log("Call logged successfully with outcome:", outcome);
+    } catch (error) {
+      console.error("Error logging call:", error);
+    }
+  };
+
   const handlePhoneClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      setShowCallStatus(true);
-      
-      const { data, error } = await supabase.functions.invoke('call-candidate', {
-        body: { candidatePhone: candidate.phone }
-      });
-      
-      if (error) throw error;
-      
-      if (data?.sid) {
-        setCurrentCallSid(data.sid);
+      if (!deviceRef?.current) {
+        toast.error("Telefon ikke klar. Vent venligst...");
+        return;
       }
-      
-      toast.success("Systemet forbinder dig med kandidaten");
+
+      if (callRef?.current) {
+        toast.error("Et opkald er allerede i gang");
+        return;
+      }
+
+      setCurrentCallPhone(candidate.phone);
+      setShowCallStatus(true);
+
+      const params = {
+        To: candidate.phone,
+      };
+
+      const call = await deviceRef.current.connect({ params });
+      if (callRef) callRef.current = call;
+      if (setActiveCall) setActiveCall(call);
+
+      call.on("accept", () => {
+        console.log("Call accepted");
+        setCurrentCallSid(call.parameters.CallSid || "");
+      });
+
+      call.on("disconnect", () => {
+        console.log("Call disconnected");
+        if (callRef) callRef.current = null;
+        if (setActiveCall) setActiveCall(null);
+        if (showCallStatus && applications[0]) {
+          logCallToDatabase(applications[0].id, candidate.phone, "completed");
+        }
+        setShowCallStatus(false);
+        setCurrentCallSid("");
+        setCurrentCallPhone("");
+        if (onUpdate) onUpdate();
+      });
+
+      call.on("cancel", () => {
+        console.log("Call cancelled");
+        if (callRef) callRef.current = null;
+        if (setActiveCall) setActiveCall(null);
+        setShowCallStatus(false);
+        setCurrentCallSid("");
+        setCurrentCallPhone("");
+      });
+
+      call.on("error", (error) => {
+        console.error("Call error:", error);
+        toast.error("Opkaldsfejl: " + error.message);
+        if (callRef) callRef.current = null;
+        if (setActiveCall) setActiveCall(null);
+        setShowCallStatus(false);
+        setCurrentCallSid("");
+        setCurrentCallPhone("");
+      });
+
+      toast.success("Ringer op til kandidaten...");
     } catch (err: any) {
-      console.error('Call error:', err);
-      toast.error("Kunne ikke starte opkaldet");
+      console.error("Call error:", err);
+      toast.error("Kunne ikke starte opkaldet: " + err.message);
       setShowCallStatus(false);
+      if (callRef) callRef.current = null;
+      if (setActiveCall) setActiveCall(null);
     }
   };
 
@@ -687,17 +761,20 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
         </Card>
       </Collapsible>
 
-      {showCallStatus && applications[0] && (
+      {showCallStatus && activeCall && (
         <CallStatusDialog
-          candidateName={`${candidate.first_name} ${candidate.last_name}`}
-          candidatePhone={candidate.phone}
           callSid={currentCallSid}
-          applicationId={applications[0].id}
+          candidateName={`${candidate.first_name} ${candidate.last_name}`}
+          candidatePhone={currentCallPhone}
+          activeCall={activeCall}
+          applicationId={applications[0]?.id}
           onHangup={() => {
+            if (callRef) callRef.current = null;
+            if (setActiveCall) setActiveCall(null);
             setShowCallStatus(false);
-            setCurrentCallSid('');
-            if (onUpdate) onUpdate(); // Refresh parent to show new call log
-            toast.success("Opkald afsluttet");
+            setCurrentCallSid("");
+            setCurrentCallPhone("");
+            if (onUpdate) onUpdate();
           }}
         />
       )}
