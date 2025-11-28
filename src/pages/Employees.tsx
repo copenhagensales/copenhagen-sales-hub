@@ -571,7 +571,14 @@ const Employees = () => {
 
                         {/* Revenue summary on card */}
                         <div className="grid grid-cols-3 gap-2 mb-3">
-                          <div className={`p-2 rounded border ${isRevenueOverdue(emp, 30) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}>
+                          <div 
+                            className={`p-2 rounded border cursor-pointer hover:opacity-80 transition-opacity ${isRevenueOverdue(emp, 30) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              fetchEmployeeDetails(emp.id);
+                              setShowRevenueDialog(true);
+                            }}
+                          >
                             <div className="text-xs text-muted-foreground mb-1">30 dage</div>
                             <div className="font-semibold">
                               {getRevenueForPeriod(emp, 30) 
@@ -580,7 +587,14 @@ const Employees = () => {
                               }
                             </div>
                           </div>
-                          <div className={`p-2 rounded border ${isRevenueOverdue(emp, 60) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}>
+                          <div 
+                            className={`p-2 rounded border cursor-pointer hover:opacity-80 transition-opacity ${isRevenueOverdue(emp, 60) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              fetchEmployeeDetails(emp.id);
+                              setShowRevenueDialog(true);
+                            }}
+                          >
                             <div className="text-xs text-muted-foreground mb-1">60 dage</div>
                             <div className="font-semibold">
                               {getRevenueForPeriod(emp, 60) 
@@ -589,7 +603,14 @@ const Employees = () => {
                               }
                             </div>
                           </div>
-                          <div className={`p-2 rounded border ${isRevenueOverdue(emp, 90) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}>
+                          <div 
+                            className={`p-2 rounded border cursor-pointer hover:opacity-80 transition-opacity ${isRevenueOverdue(emp, 90) ? 'bg-destructive/10 border-destructive' : 'bg-muted/50'}`}
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              fetchEmployeeDetails(emp.id);
+                              setShowRevenueDialog(true);
+                            }}
+                          >
                             <div className="text-xs text-muted-foreground mb-1">90 dage</div>
                             <div className="font-semibold">
                               {getRevenueForPeriod(emp, 90) 
