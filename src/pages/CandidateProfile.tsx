@@ -129,6 +129,7 @@ const CandidateProfile = () => {
   const [showEditHiredDateDialog, setShowEditHiredDateDialog] = useState(false);
   const [editHiredDate, setEditHiredDate] = useState<string>("");
   const [editingApplicationId, setEditingApplicationId] = useState<string>("");
+  const [showWelcomeSmsDialog, setShowWelcomeSmsDialog] = useState(false);
   const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const deviceRef = useRef<Device | null>(null);
@@ -452,6 +453,18 @@ const CandidateProfile = () => {
     } catch (error: any) {
       toast.error("Kunne ikke opdatere opstartsdato");
       console.error(error);
+    }
+  };
+
+  const handleSendWelcomeSms = () => {
+    if (applications.length > 0 && applications[0].hired_date && candidate) {
+      const firstName = candidate.first_name;
+      const hiredDate = format(new Date(applications[0].hired_date), "d. MMMM yyyy", { locale: da });
+      const teamName = teams.find(t => t.id === applications[0].team_id)?.name || "teamet";
+      
+      // Open SMS dialog with pre-filled welcome message
+      setSmsApplicationId(applications[0].id);
+      setShowWelcomeSmsDialog(true);
     }
   };
 
@@ -881,13 +894,24 @@ const CandidateProfile = () => {
                               </Button>
                             </div>
                             {applications[0].hired_date ? (
-                              <div className="text-sm">
-                                <span className="text-muted-foreground">Startdato: </span>
-                                <span className="font-medium">
-                                  {format(new Date(applications[0].hired_date), "d. MMMM yyyy", {
-                                    locale: da,
-                                  })}
-                                </span>
+                              <div className="space-y-2">
+                                <div className="text-sm">
+                                  <span className="text-muted-foreground">Startdato: </span>
+                                  <span className="font-medium">
+                                    {format(new Date(applications[0].hired_date), "d. MMMM yyyy", {
+                                      locale: da,
+                                    })}
+                                  </span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleSendWelcomeSms}
+                                  className="w-full"
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                                  Send opstartsinfo
+                                </Button>
                               </div>
                             ) : (
                               <p className="text-sm text-muted-foreground">Ingen opstartsdato angivet</p>
@@ -1147,6 +1171,20 @@ const CandidateProfile = () => {
           candidatePhone={candidate.phone}
           candidateName={`${candidate.first_name} ${candidate.last_name}`}
           applicationId={smsApplicationId}
+          onSmsSent={() => {
+            fetchCandidateData(); // Refresh to show new SMS log
+          }}
+        />
+      )}
+
+      {showWelcomeSmsDialog && candidate && applications.length > 0 && applications[0].hired_date && (
+        <SendSmsDialog
+          open={showWelcomeSmsDialog}
+          onOpenChange={setShowWelcomeSmsDialog}
+          candidatePhone={candidate.phone}
+          candidateName={`${candidate.first_name} ${candidate.last_name}`}
+          applicationId={applications[0].id}
+          initialMessage={`Hej ${candidate.first_name}! Velkommen til ${teams.find(t => t.id === applications[0].team_id)?.name || "teamet"}! Din første arbejdsdag er ${format(new Date(applications[0].hired_date), "d. MMMM yyyy", { locale: da })}. Vi glæder os til at se dig! Mvh Copenhagen Sales`}
           onSmsSent={() => {
             fetchCandidateData(); // Refresh to show new SMS log
           }}
