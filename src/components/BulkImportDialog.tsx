@@ -1,0 +1,235 @@
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Upload, FileSpreadsheet, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import * as XLSX from 'xlsx';
+
+interface BulkImportDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}
+
+interface ImportSummary {
+  total: number;
+  imported: number;
+  duplicates: number;
+  errors: number;
+}
+
+export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDialogProps) {
+  const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setImportSummary(null);
+    }
+  };
+
+  const parseExcelFile = (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          resolve(jsonData);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      reader.onerror = () => reject(new Error('Kunne ikke læse filen'));
+      reader.readAsBinaryString(file);
+    });
+  };
+
+  const handleImport = async () => {
+    if (!selectedFile) {
+      toast.error("Vælg en fil");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Parse Excel file
+      const excelData = await parseExcelFile(selectedFile);
+      
+      if (excelData.length === 0) {
+        toast.error("Ingen data fundet i filen");
+        return;
+      }
+
+      // Map Excel columns to our format
+      const candidates = excelData.map((row: any) => ({
+        first_name: row.Fornavn || "",
+        last_name: row.Efternavn || "",
+        email: row.Email || "",
+        phone: row.Telefonnummer ? String(row.Telefonnummer) : "",
+        status: row.Status || "startet",
+        source: row.Kilde || "Hjemmesiden",
+        notes: row["Noter/beskeder fra kandidaten"] || row.notes || "",
+        application_date: row.Ansøgningsdato || new Date().toISOString().split('T')[0],
+      }));
+
+      console.log(`Parsed ${candidates.length} candidates from Excel`);
+
+      // Call bulk import edge function
+      const { data, error } = await supabase.functions.invoke('bulk-import-candidates', {
+        body: { candidates },
+      });
+
+      if (error) {
+        console.error("Import error:", error);
+        throw error;
+      }
+
+      console.log("Import result:", data);
+
+      setImportSummary(data.summary);
+      
+      if (data.summary.imported > 0) {
+        toast.success(`${data.summary.imported} kandidater importeret!`);
+        onSuccess();
+      }
+
+      if (data.summary.duplicates > 0) {
+        toast.info(`${data.summary.duplicates} kandidater blev sprunget over (findes allerede)`);
+      }
+
+      if (data.summary.errors > 0) {
+        toast.warning(`${data.summary.errors} kandidater kunne ikke importeres`);
+      }
+
+    } catch (error: any) {
+      console.error("Import error:", error);
+      toast.error(error.message || "Kunne ikke importere kandidater");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setSelectedFile(null);
+    setImportSummary(null);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Bulk Import af Kandidater</DialogTitle>
+          <DialogDescription>
+            Upload en Excel-fil (.xlsx) med tidligere kandidater. Alle importeres som salgskonsulenter.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <Alert>
+            <FileSpreadsheet className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-2">
+                <div>
+                  Excel-filen skal indeholde kolonner: Fornavn, Efternavn, Email, Telefonnummer, Status, Kilde, Noter/beskeder fra kandidaten, Ansøgningsdato
+                </div>
+                <a 
+                  href="/import-skabelon.csv" 
+                  download="kandidat-import-skabelon.csv"
+                  className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <FileSpreadsheet className="h-3 w-3" />
+                  Download Excel skabelon
+                </a>
+              </div>
+            </AlertDescription>
+          </Alert>
+
+          <div>
+            <Label htmlFor="file">Excel fil</Label>
+            <div className="mt-2">
+              <input
+                id="file"
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleFileChange}
+                className="block w-full text-sm text-foreground
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-md file:border-0
+                  file:text-sm file:font-medium
+                  file:bg-primary file:text-primary-foreground
+                  hover:file:bg-primary/90
+                  file:cursor-pointer cursor-pointer"
+              />
+            </div>
+            {selectedFile && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Valgt fil: {selectedFile.name}
+              </p>
+            )}
+          </div>
+
+          {importSummary && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  <div className="font-semibold">Import resultat:</div>
+                  <div>Total: {importSummary.total}</div>
+                  <div className="text-green-600">Importeret: {importSummary.imported}</div>
+                  <div className="text-blue-600">Duplikater: {importSummary.duplicates}</div>
+                  {importSummary.errors > 0 && (
+                    <div className="text-red-600">Fejl: {importSummary.errors}</div>
+                  )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              onClick={handleImport}
+              disabled={loading || !selectedFile}
+              className="flex-1"
+            >
+              {loading ? (
+                "Importerer..."
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importer kandidater
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={loading}
+            >
+              Luk
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

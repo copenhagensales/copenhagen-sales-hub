@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, Shield, Users, Trash2 } from "lucide-react";
+import { UserPlus, Shield, Users, Trash2, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/BulkImportDialog";
 
 interface UserProfile {
   id: string;
@@ -39,6 +40,7 @@ export default function Admin() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("hiring_manager");
   const [inviting, setInviting] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -228,13 +230,19 @@ export default function Admin() {
               </p>
             </div>
 
-            <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-              <DialogTrigger asChild>
-                <Button>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Inviter bruger
-                </Button>
-              </DialogTrigger>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => setShowImportDialog(true)} variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Import
+              </Button>
+
+              <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Inviter bruger
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Inviter ny bruger</DialogTitle>
@@ -279,7 +287,14 @@ export default function Admin() {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
+
+          <BulkImportDialog
+            open={showImportDialog}
+            onOpenChange={setShowImportDialog}
+            onSuccess={fetchUsers}
+          />
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
