@@ -41,7 +41,7 @@ async function handleTwilioVoiceRequest(req: Request) {
   const formData = await req.formData();
   const to = formData.get("To");
 
-  const FALLBACK_CALLER_ID = Deno.env.get("TWILIO_CALLER_NUMBER_1");
+  const FALLBACK_CALLER_ID = "+4552512853";
   //Deno.env.get("TWILIO_CALLER_NUMBER") ||
   const callerId = FALLBACK_CALLER_ID;
 
