@@ -34,6 +34,34 @@ interface Message {
   };
 }
 
+const parseEmailContent = (outcome: string) => {
+  // Extract subject
+  const subjectMatch = outcome.match(/Subject: (.+?)\n/);
+  const subject = subjectMatch ? subjectMatch[1].trim() : '';
+  
+  // Strip HTML tags and get plain text
+  const htmlMatch = outcome.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  let body = htmlMatch ? htmlMatch[1] : outcome;
+  
+  // Remove all HTML tags
+  body = body.replace(/<[^>]+>/g, '');
+  // Remove extra whitespace and newlines
+  body = body.replace(/\s+/g, ' ').trim();
+  // Decode HTML entities
+  body = body.replace(/&nbsp;/g, ' ')
+             .replace(/&amp;/g, '&')
+             .replace(/&lt;/g, '<')
+             .replace(/&gt;/g, '>')
+             .replace(/&quot;/g, '"');
+  
+  // Limit length for preview
+  if (body.length > 200) {
+    body = body.substring(0, 200) + '...';
+  }
+  
+  return { subject, body };
+};
+
 const Messages = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -284,9 +312,25 @@ const Messages = () => {
                               </span>
                             </div>
 
-                            {(message.type === "email" ? message.outcome : message.content) && (
+                            {message.type === "email" && message.outcome && (() => {
+                              const { subject, body } = parseEmailContent(message.outcome);
+                              return (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-semibold">
+                                    {subject}
+                                  </p>
+                                  {body && (
+                                    <p className="text-sm p-3 bg-muted/30 rounded border">
+                                      {body}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            
+                            {message.type === "sms" && message.content && (
                               <p className="text-sm p-3 bg-muted/30 rounded border whitespace-pre-wrap">
-                                {message.type === "email" ? message.outcome : message.content}
+                                {message.content}
                               </p>
                             )}
 
@@ -321,16 +365,13 @@ const Messages = () => {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => {
+                                    const { subject, body } = parseEmailContent(message.outcome || '');
                                     setEmailApplicationId(message.application_id);
                                     setEmailAddress((message.application.candidate as any).email || '');
                                     setEmailName(candidateName);
-                                    // Parse subject and body from outcome field
-                                    const outcome = message.outcome || '';
-                                    const subjectMatch = outcome.match(/Subject: (.+?)\n/);
-                                    const originalSubject = subjectMatch ? subjectMatch[1] : '';
-                                    setEmailSubject(originalSubject.startsWith('Re: ') ? originalSubject : `Re: ${originalSubject}`);
-                                    setEmailBody(`\n\n--- Original besked ---\n${outcome}`);
-                                    setEmailReplyToId(message.content || ''); // content contains internetMessageId
+                                    setEmailSubject(subject.startsWith('Re: ') ? subject : `Re: ${subject}`);
+                                    setEmailBody(`\n\n--- Original besked ---\n${body}`);
+                                    setEmailReplyToId(message.content || '');
                                     setShowEmailDialog(true);
                                   }}
                                 >
