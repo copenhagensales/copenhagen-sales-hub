@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { NewCandidateDialog } from "@/components/NewCandidateDialog";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Search, Plus, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
+import { Device, Call } from "@twilio/voice-sdk";
 
 interface Application {
   id: string;
@@ -46,10 +47,51 @@ const Candidates = () => {
   const [teams, setTeams] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
+  const [activeCall, setActiveCall] = useState<Call | null>(null);
+  const deviceRef = useRef<Device | null>(null);
+  const callRef = useRef<Call | null>(null);
 
   useEffect(() => {
     fetchCandidates();
     fetchTeams();
+
+    // Initialize Twilio Device
+    const initializeTwilioDevice = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("twilio-voice-token");
+        if (error) throw error;
+
+        if (data?.token) {
+          const device = new Device(data.token, {
+            logLevel: 1,
+            codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
+          });
+
+          device.on("registered", () => {
+            console.log("Twilio Device registered");
+          });
+
+          device.on("error", (error) => {
+            console.error("Twilio Device error:", error);
+            toast.error("Telefonfejl: " + error.message);
+          });
+
+          device.on("incoming", (call) => {
+            console.log("Incoming call:", call);
+            toast.info("Indgående opkald");
+          });
+
+          await device.register();
+          deviceRef.current = device;
+          setTwilioDevice(device);
+        }
+      } catch (err: any) {
+        console.error("Error initializing Twilio Device:", err);
+      }
+    };
+
+    initializeTwilioDevice();
 
     // Set up realtime subscription for new candidates
     const channel = supabase
@@ -79,6 +121,13 @@ const Candidates = () => {
 
     return () => {
       supabase.removeChannel(channel);
+      // Cleanup Twilio Device
+      if (callRef.current) {
+        callRef.current.disconnect();
+      }
+      if (deviceRef.current) {
+        deviceRef.current.destroy();
+      }
     };
   }, []);
 
