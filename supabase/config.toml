@@ -3,12 +3,6 @@ project_id = "vlspljhqyanpadbucmvq"
 [functions.twilio-voice-token]
 verify_jwt = false
 
-[functions.twiliotoken1]
-verify_jwt = false
-
-[functions.twiltoken]
-verify_jwt = false
-
 [functions.twilio-token]
 verify_jwt = false
 
