@@ -25,11 +25,13 @@ interface ImportSummary {
   imported: number;
   duplicates: number;
   errors: number;
+  teamsAssigned?: number;
 }
 
 export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDialogProps) {
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [employeeFile, setEmployeeFile] = useState<File | null>(null);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,6 +39,13 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
     if (file) {
       setSelectedFile(file);
       setImportSummary(null);
+    }
+  };
+
+  const handleEmployeeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEmployeeFile(file);
     }
   };
 
@@ -64,23 +73,23 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
 
   const handleImport = async () => {
     if (!selectedFile) {
-      toast.error("Vælg en fil");
+      toast.error("Vælg en kandidatfil");
       return;
     }
 
     try {
       setLoading(true);
       
-      // Parse Excel file
-      const excelData = await parseExcelFile(selectedFile);
+      // Parse candidate Excel file
+      const candidateData = await parseExcelFile(selectedFile);
       
-      if (excelData.length === 0) {
-        toast.error("Ingen data fundet i filen");
+      if (candidateData.length === 0) {
+        toast.error("Ingen data fundet i kandidat-filen");
         return;
       }
 
-      // Map Excel columns to our format
-      const candidates = excelData.map((row: any) => ({
+      // Map Excel columns to our format for candidates
+      const candidates = candidateData.map((row: any) => ({
         first_name: row.Fornavn || "",
         last_name: row.Efternavn || "",
         email: row.Email || "",
@@ -93,9 +102,21 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
 
       console.log(`Parsed ${candidates.length} candidates from Excel`);
 
+      // Parse employee file if provided for team mapping
+      let employees = null;
+      if (employeeFile) {
+        const employeeData = await parseExcelFile(employeeFile);
+        employees = employeeData.map((row: any) => ({
+          email: row.Email || "",
+          team: row.Medarbejdergrupper || "",
+          full_name: row["Fulde navn"] || "",
+        }));
+        console.log(`Parsed ${employees.length} employees for team mapping`);
+      }
+
       // Call bulk import edge function
       const { data, error } = await supabase.functions.invoke('bulk-import-candidates', {
-        body: { candidates },
+        body: { candidates, employees },
       });
 
       if (error) {
@@ -108,7 +129,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
       setImportSummary(data.summary);
       
       if (data.summary.imported > 0) {
-        toast.success(`${data.summary.imported} kandidater importeret!`);
+        toast.success(`${data.summary.imported} kandidater importeret!${data.summary.teamsAssigned > 0 ? ` ${data.summary.teamsAssigned} teams tildelt.` : ''}`);
         onSuccess();
       }
 
@@ -130,6 +151,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
 
   const handleClose = () => {
     setSelectedFile(null);
+    setEmployeeFile(null);
     setImportSummary(null);
     onOpenChange(false);
   };
@@ -150,7 +172,10 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
             <AlertDescription>
               <div className="space-y-2">
                 <div>
-                  Excel-filen skal indeholde kolonner: Fornavn, Efternavn, Email, Telefonnummer, Status, Kilde, Noter/beskeder fra kandidaten, Ansøgningsdato
+                  <strong>Kandidat-fil:</strong> Excel-filen skal indeholde kolonner: Fornavn, Efternavn, Email, Telefonnummer, Status, Kilde, Noter/beskeder fra kandidaten, Ansøgningsdato
+                </div>
+                <div>
+                  <strong>Valgfri medarbejder-fil:</strong> Upload også medarbejder-filen for at tildele teams automatisk til ansatte
                 </div>
                 <a 
                   href="/import-skabelon.csv" 
@@ -165,7 +190,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
           </Alert>
 
           <div>
-            <Label htmlFor="file">Excel fil</Label>
+            <Label htmlFor="file">Kandidat Excel fil (påkrævet)</Label>
             <div className="mt-2">
               <input
                 id="file"
@@ -188,6 +213,30 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
             )}
           </div>
 
+          <div>
+            <Label htmlFor="employeeFile">Medarbejder Excel fil (valgfri - for team-matching)</Label>
+            <div className="mt-2">
+              <input
+                id="employeeFile"
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleEmployeeFileChange}
+                className="block w-full text-sm text-foreground
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-md file:border-0
+                  file:text-sm file:font-medium
+                  file:bg-secondary file:text-secondary-foreground
+                  hover:file:bg-secondary/90
+                  file:cursor-pointer cursor-pointer"
+              />
+            </div>
+            {employeeFile && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Valgt fil: {employeeFile.name}
+              </p>
+            )}
+          </div>
+
           {importSummary && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -196,6 +245,9 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                   <div className="font-semibold">Import resultat:</div>
                   <div>Total: {importSummary.total}</div>
                   <div className="text-green-600">Importeret: {importSummary.imported}</div>
+                  {importSummary.teamsAssigned && importSummary.teamsAssigned > 0 && (
+                    <div className="text-blue-600">Teams tildelt: {importSummary.teamsAssigned}</div>
+                  )}
                   <div className="text-blue-600">Duplikater: {importSummary.duplicates}</div>
                   {importSummary.errors > 0 && (
                     <div className="text-red-600">Fejl: {importSummary.errors}</div>
