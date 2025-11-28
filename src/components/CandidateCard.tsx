@@ -33,7 +33,8 @@ import {
   User,
   Clock,
   AlertCircle,
-  Trash2
+  Trash2,
+  MessageSquare
 } from "lucide-react";
 import { format, differenceInHours, differenceInDays } from "date-fns";
 import { da } from "date-fns/locale";
@@ -370,7 +371,6 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                         {/* Application preview */}
                         {latestApplication.notes && (
                           <div className="mt-2 text-xs text-muted-foreground bg-muted/30 rounded p-2 border border-border/50">
-                            <span className="font-medium text-foreground">Ansøgning: </span>
                             <span className="line-clamp-2">
                               {latestApplication.notes}
                             </span>
@@ -414,6 +414,18 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                   >
                     <Phone className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
                     <span className="hidden sm:inline ml-1">Ring op</span>
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/messages?candidate=${candidate.id}`);
+                    }}
+                    className="h-7 md:h-8 text-xs"
+                  >
+                    <MessageSquare className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
+                    <span className="hidden sm:inline ml-1">SMS</span>
                   </Button>
                   <Button 
                     size="sm" 
@@ -600,7 +612,6 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
 
                     {app.notes && (
                       <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-                        <span className="font-medium">Ansøgningstekst: </span>
                         <span className="whitespace-pre-wrap">{app.notes}</span>
                       </div>
                     )}
