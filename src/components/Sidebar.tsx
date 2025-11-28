@@ -15,7 +15,8 @@ import {
   X,
   MessageSquare,
   CalendarCheck,
-  Shield
+  Shield,
+  MessageCircle
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "@/assets/cph-sales-logo.png";
@@ -121,6 +122,7 @@ export const Sidebar = () => {
   ];
 
   const adminNavItem = { to: "/admin", icon: Shield, label: "Admin", adminOnly: true };
+  const smsTemplatesNavItem = { to: "/sms-templates", icon: MessageCircle, label: "SMS-skabeloner", adminOnly: true };
 
   const SidebarContent = () => (
     <>
@@ -148,15 +150,26 @@ export const Sidebar = () => {
         ))}
         
         {isAdmin && (
-          <NavLink
-            to={adminNavItem.to}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent transition-colors"
-            activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-            onClick={() => setOpen(false)}
-          >
-            <adminNavItem.icon className="h-5 w-5" />
-            <span>{adminNavItem.label}</span>
-          </NavLink>
+          <>
+            <NavLink
+              to={adminNavItem.to}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent transition-colors"
+              activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+              onClick={() => setOpen(false)}
+            >
+              <adminNavItem.icon className="h-5 w-5" />
+              <span>{adminNavItem.label}</span>
+            </NavLink>
+            <NavLink
+              to={smsTemplatesNavItem.to}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent transition-colors"
+              activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+              onClick={() => setOpen(false)}
+            >
+              <smsTemplatesNavItem.icon className="h-5 w-5" />
+              <span>{smsTemplatesNavItem.label}</span>
+            </NavLink>
+          </>
         )}
       </nav>
 
