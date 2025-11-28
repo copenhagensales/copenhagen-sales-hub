@@ -452,6 +452,8 @@ export type Database = {
         | "ikke_ansat"
         | "startet"
         | "ny_ansoegning"
+        | "ghostet"
+        | "takket_nej"
       user_role: "admin" | "hiring_manager" | "interviewer"
     }
     CompositeTypes: {
@@ -588,6 +590,8 @@ export const Constants = {
         "ikke_ansat",
         "startet",
         "ny_ansoegning",
+        "ghostet",
+        "takket_nej",
       ],
       user_role: ["admin", "hiring_manager", "interviewer"],
     },

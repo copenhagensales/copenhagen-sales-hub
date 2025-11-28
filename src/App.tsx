@@ -18,6 +18,7 @@ import Employees from "./pages/Employees";
 import Messages from "./pages/Messages";
 import Reports from "./pages/Reports";
 import UpcomingHires from "./pages/UpcomingHires";
+import Winback from "./pages/Winback";
 import Admin from "./pages/Admin";
 import SmsTemplates from "./pages/SmsTemplates";
 import EmailTemplates from "./pages/EmailTemplates";
@@ -90,6 +91,10 @@ const App = () => {
             <Route
               path="/upcoming-hires"
               element={session ? <UpcomingHires /> : <Navigate to="/auth" replace />}
+            />
+            <Route
+              path="/winback"
+              element={session ? <Winback /> : <Navigate to="/auth" replace />}
             />
             <Route
               path="/pipeline"
