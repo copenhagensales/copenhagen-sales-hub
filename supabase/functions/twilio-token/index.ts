@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// @ts-ignore - Import from esm.sh
-import twilio from "npm:twilio@5.3.5";
+import { create, getNumericDate } from "https://deno.land/x/djwt@v2.9/mod.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "OPTIONS, POST",
@@ -8,11 +8,12 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // 1. Manejo de CORS (Preflight)
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  // 2. Solo permitir POST
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -21,70 +22,73 @@ serve(async (req) => {
   }
 
   try {
-    // Get Twilio credentials from environment
+    // 3. Obtener credenciales
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID");
     const apiKeySecret = Deno.env.get("TWILIO_API_KEY_SECRET");
     const twimlAppSid = Deno.env.get("TWILIO_TWIML_APP_SID");
 
-    console.log("[Twilio Token] Environment check:", {
-      accountSid: accountSid ? `${accountSid.slice(0, 8)}...` : "MISSING",
-      apiKeySid: apiKeySid ? `${apiKeySid.slice(0, 8)}...` : "MISSING",
-      apiKeySecret: apiKeySecret ? "SET" : "MISSING",
-      twimlAppSid: twimlAppSid ? `${twimlAppSid.slice(0, 8)}...` : "MISSING",
-    });
-
-    // Validate all required credentials are present
+    // Validar existencia
     if (!accountSid || !apiKeySid || !apiKeySecret || !twimlAppSid) {
-      throw new Error("Missing required Twilio credentials");
+      throw new Error("Faltan credenciales de Twilio en .env");
     }
 
-    // Validate credential formats
-    if (!accountSid.startsWith("AC")) {
-      throw new Error("Invalid TWILIO_ACCOUNT_SID format (must start with AC)");
+    // 4. Determinar identidad (dinámica o fija)
+    let identity = "agent";
+    try {
+      const body = await req.json();
+      if (body.identity) identity = body.identity;
+    } catch (e) {
+      // Si falla el parseo del body, usamos 'agent' por defecto
     }
-    if (!apiKeySid.startsWith("SK")) {
-      throw new Error("Invalid TWILIO_API_KEY_SID format (must start with SK)");
-    }
-    if (!twimlAppSid.startsWith("AP")) {
-      throw new Error("Invalid TWILIO_TWIML_APP_SID format (must start with AP)");
-    }
+    console.log("[Twilio] Generando token para:", identity);
 
-    // Use fixed identity "agent" for incoming calls to work
-    const identity = "agent";
-    console.log("[Twilio Token] Using identity:", identity);
+    // 5. CONSTRUCCIÓN MANUAL DEL TOKEN (Sin librería 'twilio')
+    // Twilio requiere una estructura específica para los 'grants'
+    const payload = {
+      jti: apiKeySid + "-" + Date.now(),
+      iss: apiKeySid,
+      sub: accountSid,
+      exp: getNumericDate(60 * 60), // Expira en 1 hora
+      grants: {
+        identity: identity,
+        voice: {
+          incoming: { allow: true },
+          outgoing: { application_sid: twimlAppSid },
+        },
+      },
+    };
 
-    // Create Access Token using official Twilio library
-    const AccessToken = twilio.jwt.AccessToken;
-    const VoiceGrant = AccessToken.VoiceGrant;
+    // Header específico que pide Twilio
+    const header = {
+      alg: "HS256",
+      typ: "JWT",
+      cty: "twilio-fpa;v=1",
+    };
 
-    // Create an access token
-    const accessToken = new AccessToken(accountSid, apiKeySid, apiKeySecret, { identity });
+    // Importar la clave secreta para firmar
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(apiKeySecret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
 
-    // Create a Voice grant
-    const voiceGrant = new VoiceGrant({
-      outgoingApplicationSid: twimlAppSid,
-      incomingAllow: true,
-    });
+    // Firmar el token usando djwt
+    const token = await create(header, payload, key);
 
-    // Add the grant to the token
-    accessToken.addGrant(voiceGrant);
-
-    // Generate the JWT
-    const token = accessToken.toJwt();
-
-    console.log("[Twilio Token] Token generated successfully using Twilio library, length:", token.length);
-    console.log("[Twilio Token] Token preview:", `${token.slice(0, 50)}...`);
+    console.log("[Twilio] Token generado con éxito");
 
     return new Response(JSON.stringify({ token }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("[Twilio Token] Error:", error);
+    console.error("[Twilio] Error fatal:", error);
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Error desconocido",
       }),
       {
         status: 500,
