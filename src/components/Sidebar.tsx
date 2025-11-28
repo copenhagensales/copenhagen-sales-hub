@@ -116,10 +116,10 @@ export const Sidebar = () => {
   const navItems = [
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/candidates", icon: Users, label: "Kandidater", badge: newCandidatesCount },
+    { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
     { to: "/employees", icon: Briefcase, label: "Ansatte" },
     { to: "/upcoming-hires", icon: CalendarCheck, label: "Kommende ansættelser" },
     { to: "/winback", icon: RotateCcw, label: "Winback" },
-    { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
   ];
 
