@@ -46,15 +46,15 @@ export const Sidebar = () => {
       )
       .subscribe();
 
-    // Subscribe to changes in candidates
-    const candidatesChannel = supabase
-      .channel('new-candidates-count')
+    // Subscribe to changes in applications
+    const applicationsChannel = supabase
+      .channel('new-applications-count')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'candidates'
+          table: 'applications'
         },
         () => {
           fetchNewCandidatesCount();
@@ -64,7 +64,7 @@ export const Sidebar = () => {
 
     return () => {
       supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(candidatesChannel);
+      supabase.removeChannel(applicationsChannel);
     };
   }, []);
 
@@ -81,9 +81,9 @@ export const Sidebar = () => {
 
   const fetchNewCandidatesCount = async () => {
     const { count } = await supabase
-      .from('candidates')
+      .from('applications')
       .select('*', { count: 'exact', head: true })
-      .is('first_viewed_at', null);
+      .eq('status', 'ny_ansoegning');
 
     setNewCandidatesCount(count || 0);
   };
