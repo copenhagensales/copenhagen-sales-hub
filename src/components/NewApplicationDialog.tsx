@@ -160,6 +160,8 @@ export const NewApplicationDialog = ({
                 <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                 <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
                 <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
+                <SelectItem value="ghostet">Ghostet</SelectItem>
+                <SelectItem value="takket_nej">Takket nej</SelectItem>
                 <SelectItem value="ansat">Ansat</SelectItem>
               </SelectContent>
             </Select>
