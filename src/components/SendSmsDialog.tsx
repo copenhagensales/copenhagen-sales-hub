@@ -22,6 +22,7 @@ interface SendSmsDialogProps {
   candidateName: string;
   applicationId: string;
   onSmsSent?: () => void;
+  initialMessage?: string;
 }
 
 export const SendSmsDialog = ({
@@ -31,6 +32,7 @@ export const SendSmsDialog = ({
   candidateName,
   applicationId,
   onSmsSent,
+  initialMessage,
 }: SendSmsDialogProps) => {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -52,8 +54,12 @@ export const SendSmsDialog = ({
 
     if (open) {
       fetchTemplates();
+      // Set initial message if provided
+      if (initialMessage) {
+        setMessage(initialMessage);
+      }
     }
-  }, [open]);
+  }, [open, initialMessage]);
 
   useEffect(() => {
     const fetchApplicationRole = async () => {
