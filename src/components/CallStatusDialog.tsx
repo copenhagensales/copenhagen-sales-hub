@@ -1,95 +1,126 @@
-import { Phone, PhoneOff } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useEffect, useState } from "react";
+import { Phone, PhoneOff } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { Call } from "@twilio/voice-sdk";
 
 interface CallStatusDialogProps {
   candidateName: string;
   candidatePhone: string;
   callSid?: string;
   applicationId?: string;
+  activeCall?: Call | null;
   onHangup: () => void;
 }
 
-export const CallStatusDialog = ({ 
-  candidateName, 
+export const CallStatusDialog = ({
+  candidateName,
   candidatePhone,
   callSid,
   applicationId,
-  onHangup 
+  activeCall,
+  onHangup,
 }: CallStatusDialogProps) => {
   const [callDuration, setCallDuration] = useState(0);
-  const [status, setStatus] = useState<'ringing' | 'connected'>('ringing');
+  const [status, setStatus] = useState<"ringing" | "connected" | "disconnected">("ringing");
   const [callStartTime] = useState(new Date());
 
   useEffect(() => {
-    // Simulate connection after 3 seconds
-    const connectTimer = setTimeout(() => {
-      setStatus('connected');
-    }, 3000);
+    if (!activeCall) return;
 
-    return () => clearTimeout(connectTimer);
-  }, []);
+    const handleAccept = () => {
+      console.log("Call accepted");
+      setStatus("connected");
+    };
+
+    const handleDisconnect = () => {
+      console.log("Call disconnected");
+      setStatus("disconnected");
+    };
+
+    const handleCancel = () => {
+      console.log("Call cancelled");
+      setStatus("disconnected");
+    };
+
+    const handleError = (error: any) => {
+      console.error("Call error:", error);
+      setStatus("disconnected");
+    };
+
+    activeCall.on("accept", handleAccept);
+    activeCall.on("disconnect", handleDisconnect);
+    activeCall.on("cancel", handleCancel);
+    activeCall.on("error", handleError);
+
+    // Check if call is already connected
+    if (activeCall.status() === "open") {
+      setStatus("connected");
+    }
+
+    return () => {
+      activeCall.off("accept", handleAccept);
+      activeCall.off("disconnect", handleDisconnect);
+      activeCall.off("cancel", handleCancel);
+      activeCall.off("error", handleError);
+    };
+  }, [activeCall]);
 
   useEffect(() => {
-    if (status === 'connected') {
+    if (status === "connected") {
       const interval = setInterval(() => {
-        setCallDuration(prev => prev + 1);
+        const elapsed = Math.floor((new Date().getTime() - callStartTime.getTime()) / 1000);
+        setCallDuration(elapsed);
       }, 1000);
 
       return () => clearInterval(interval);
     }
-  }, [status]);
+  }, [status, callStartTime]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleHangup = async () => {
-    // Hang up the call via Twilio API
-    if (callSid) {
+    // Disconnect the call if it's active
+    if (activeCall) {
       try {
-        console.log('Hanging up call:', callSid);
-        const { error } = await supabase.functions.invoke('hangup-call', {
-          body: { callSid }
-        });
-        
-        if (error) {
-          console.error('Error hanging up call:', error);
-        }
+        activeCall.disconnect();
       } catch (error) {
-        console.error('Error hanging up call:', error);
+        console.error("Error disconnecting call:", error);
       }
     }
-    
+
     // Log call to database if we have an applicationId
     if (applicationId) {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
         // Determine outcome based on call status
-        const outcome = status === 'connected' ? 'completed' : 'ingen kontakt';
-        const duration = status === 'connected' ? callDuration : null;
-        
-        await supabase.from('communication_logs').insert({
+        const outcome = status === "connected" ? "completed" : "ingen kontakt";
+        const duration = status === "connected" ? callDuration : null;
+
+        await supabase.from("communication_logs").insert({
           application_id: applicationId,
-          type: 'phone',
-          direction: 'outbound',
+          type: "phone",
+          direction: "outbound",
           duration: duration,
           outcome: outcome,
           content: `Opkald til ${candidatePhone}`,
-          created_by: user?.id
+          created_by: user?.id,
         });
-        
-        console.log('Call logged successfully with outcome:', outcome);
+
+        console.log("Call logged successfully with outcome:", outcome);
       } catch (error) {
-        console.error('Error logging call:', error);
+        console.error("Error logging call:", error);
       }
     }
-    
+
     onHangup();
   };
 
@@ -99,22 +130,23 @@ export const CallStatusDialog = ({
         <div className="space-y-6">
           {/* Status indicator */}
           <div className="flex flex-col items-center gap-4">
-            <div className={`
+            <div
+              className={`
               w-20 h-20 rounded-full flex items-center justify-center
-              ${status === 'ringing' 
-                ? 'bg-status-progress/20 animate-pulse' 
-                : 'bg-status-success/20'
-              }
-            `}>
-              <Phone className={`
+              ${status === "ringing" ? "bg-status-progress/20 animate-pulse" : "bg-status-success/20"}
+            `}
+            >
+              <Phone
+                className={`
                 h-10 w-10
-                ${status === 'ringing' ? 'text-status-progress' : 'text-status-success'}
-              `} />
+                ${status === "ringing" ? "text-status-progress" : "text-status-success"}
+              `}
+              />
             </div>
-            
+
             <div className="text-center space-y-1">
               <p className="text-sm text-muted-foreground">
-                {status === 'ringing' ? 'Ringer op...' : 'Forbundet'}
+                {status === "ringing" ? "Ringer op..." : status === "connected" ? "Forbundet" : "Afsluttet"}
               </p>
               <h3 className="text-xl font-semibold">{candidateName}</h3>
               <p className="text-sm text-muted-foreground">{candidatePhone}</p>
@@ -122,31 +154,20 @@ export const CallStatusDialog = ({
           </div>
 
           {/* Call duration */}
-          {status === 'connected' && (
+          {status === "connected" && (
             <div className="text-center">
-              <p className="text-3xl font-mono font-semibold tabular-nums">
-                {formatDuration(callDuration)}
-              </p>
+              <p className="text-3xl font-mono font-semibold tabular-nums">{formatDuration(callDuration)}</p>
             </div>
           )}
 
           {/* Actions */}
           <div className="flex justify-center">
-            <Button
-              onClick={handleHangup}
-              variant="destructive"
-              size="lg"
-              className="rounded-full w-16 h-16"
-            >
+            <Button onClick={handleHangup} variant="destructive" size="lg" className="rounded-full w-16 h-16">
               <PhoneOff className="h-6 w-6" />
             </Button>
           </div>
 
-          {callSid && (
-            <p className="text-xs text-center text-muted-foreground">
-              Call ID: {callSid.slice(0, 8)}...
-            </p>
-          )}
+          {callSid && <p className="text-xs text-center text-muted-foreground">Call ID: {callSid.slice(0, 8)}...</p>}
         </div>
       </Card>
     </div>
