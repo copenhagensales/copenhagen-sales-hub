@@ -20,7 +20,7 @@ export class TwilioVoiceManager {
 
   private async fetchTwilioToken(): Promise<string> {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const url = `${supabaseUrl}/functions/v1/twiliotoken1`;
+    const url = `${supabaseUrl}/functions/v1/twilio-voice-token`;
 
     console.log("[Twilio] Fetching token from:", url);
 

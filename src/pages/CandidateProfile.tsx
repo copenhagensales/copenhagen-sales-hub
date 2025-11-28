@@ -156,7 +156,7 @@ const CandidateProfile = () => {
     // Initialize Twilio Device
     const initializeTwilioDevice = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("twiliotoken1");
+        const { data, error } = await supabase.functions.invoke("twilio-voice-token");
         if (error) throw error;
 
         if (data?.token) {
@@ -463,8 +463,8 @@ const CandidateProfile = () => {
     if (applications.length > 0 && applications[0].hired_date && candidate) {
       const firstName = candidate.first_name;
       const hiredDate = format(new Date(applications[0].hired_date), "d. MMMM yyyy", { locale: da });
-      const teamName = teams.find(t => t.id === applications[0].team_id)?.name || "teamet";
-      
+      const teamName = teams.find((t) => t.id === applications[0].team_id)?.name || "teamet";
+
       // Open SMS dialog with pre-filled welcome message
       setSmsApplicationId(applications[0].id);
       setShowWelcomeSmsDialog(true);
@@ -895,7 +895,9 @@ const CandidateProfile = () => {
                                 variant="outline"
                                 onClick={() => {
                                   setEditingApplicationId(applications[0].id);
-                                  setEditHiredDate(applications[0].hired_date || new Date().toISOString().split('T')[0]);
+                                  setEditHiredDate(
+                                    applications[0].hired_date || new Date().toISOString().split("T")[0],
+                                  );
                                   setShowEditHiredDateDialog(true);
                                 }}
                               >
@@ -913,12 +915,7 @@ const CandidateProfile = () => {
                                     })}
                                   </span>
                                 </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={handleSendWelcomeSms}
-                                  className="w-full"
-                                >
+                                <Button size="sm" variant="outline" onClick={handleSendWelcomeSms} className="w-full">
                                   <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
                                   Send opstartsinfo
                                 </Button>
@@ -1207,7 +1204,7 @@ const CandidateProfile = () => {
           candidatePhone={candidate.phone}
           candidateName={`${candidate.first_name} ${candidate.last_name}`}
           applicationId={applications[0].id}
-          initialMessage={`Hej ${candidate.first_name}! Velkommen til ${teams.find(t => t.id === applications[0].team_id)?.name || "teamet"}! Din første arbejdsdag er ${format(new Date(applications[0].hired_date), "d. MMMM yyyy", { locale: da })}. Vi glæder os til at se dig! Mvh Copenhagen Sales`}
+          initialMessage={`Hej ${candidate.first_name}! Velkommen til ${teams.find((t) => t.id === applications[0].team_id)?.name || "teamet"}! Din første arbejdsdag er ${format(new Date(applications[0].hired_date), "d. MMMM yyyy", { locale: da })}. Vi glæder os til at se dig! Mvh Copenhagen Sales`}
           onSmsSent={() => {
             fetchCandidateData(); // Refresh to show new SMS log
           }}
