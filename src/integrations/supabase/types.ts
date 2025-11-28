@@ -225,6 +225,36 @@ export type Database = {
           },
         ]
       }
+      email_templates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          name: string
+          subject: string
+          template_key: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          name: string
+          subject: string
+          template_key: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          name?: string
+          subject?: string
+          template_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       performance_reviews: {
         Row: {
           application_id: string

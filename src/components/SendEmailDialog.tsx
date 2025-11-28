@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+
+interface EmailTemplate {
+  id: string;
+  name: string;
+  template_key: string;
+  subject: string;
+  content: string;
+}
 
 interface SendEmailDialogProps {
   open: boolean;
@@ -34,6 +43,67 @@ export const SendEmailDialog = ({
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(initialBody);
   const [isSending, setIsSending] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [applicationRole, setApplicationRole] = useState<string>("");
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      const { data } = await supabase
+        .from("email_templates")
+        .select("*")
+        .order("name");
+      
+      if (data) {
+        setTemplates(data);
+      }
+    };
+
+    if (open) {
+      fetchTemplates();
+      // Set initial content if provided
+      if (initialSubject) {
+        setSubject(initialSubject);
+      }
+      if (initialBody) {
+        setBody(initialBody);
+      }
+    }
+  }, [open, initialSubject, initialBody]);
+
+  useEffect(() => {
+    const fetchApplicationRole = async () => {
+      const { data } = await supabase
+        .from("applications")
+        .select("role")
+        .eq("id", applicationId)
+        .single();
+      
+      if (data) {
+        setApplicationRole(data.role);
+      }
+    };
+
+    if (open && applicationId) {
+      fetchApplicationRole();
+    }
+  }, [open, applicationId]);
+
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      const firstName = candidateName.split(" ")[0];
+      const populatedSubject = template.subject
+        .replace(/{{fornavn}}/g, firstName)
+        .replace(/{{rolle}}/g, applicationRole || "salgskonsulent");
+      const populatedBody = template.content
+        .replace(/{{fornavn}}/g, firstName)
+        .replace(/{{rolle}}/g, applicationRole || "salgskonsulent");
+      setSubject(populatedSubject);
+      setBody(populatedBody);
+    }
+  };
 
   const handleSend = async () => {
     if (!subject.trim() || !body.trim()) {
@@ -93,6 +163,22 @@ export const SendEmailDialog = ({
         <div className="space-y-4">
           <div>
             <label className="text-sm text-muted-foreground">Til: {candidateEmail}</label>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="template">Vælg skabelon</Label>
+            <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+              <SelectTrigger id="template">
+                <SelectValue placeholder="Vælg en email-skabelon..." />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
