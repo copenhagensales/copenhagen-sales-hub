@@ -326,7 +326,9 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
     <>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <Card 
-          className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer"
+          className={`hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer ${
+            latestApplication?.status === 'ny_ansoegning' ? 'border-l-4 border-l-red-500' : ''
+          }`}
           onClick={handleCardClick}
         >
           <CardContent className="p-3 md:p-4">
@@ -368,7 +370,12 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
 
                   {/* Right side - Badges and actions */}
                   <div className="flex flex-col items-end gap-1.5 md:gap-2">
-                    {!candidate.first_viewed_at && (
+                    {latestApplication?.status === 'ny_ansoegning' && (
+                      <Badge className="bg-red-500 text-white whitespace-nowrap text-xs font-semibold">
+                        NY ANSØGNING
+                      </Badge>
+                    )}
+                    {!candidate.first_viewed_at && latestApplication?.status !== 'ny_ansoegning' && (
                       <Badge className="bg-status-new text-white whitespace-nowrap text-xs font-semibold">
                         NY
                       </Badge>
