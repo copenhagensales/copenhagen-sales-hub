@@ -135,6 +135,12 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
     return `${days}d`;
   };
 
+  const cleanApplicationText = (text: string | undefined) => {
+    if (!text) return '';
+    // Remove "Ansøgning fra kandidat:" prefix if it exists
+    return text.replace(/^Ansøgning fra kandidat:\s*/i, '').trim();
+  };
+
   const handleEmailClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     window.location.href = `mailto:${candidate.email}`;
@@ -372,7 +378,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
                         {latestApplication.notes && (
                           <div className="mt-2 text-xs text-muted-foreground bg-muted/30 rounded p-2 border border-border/50">
                             <span className="line-clamp-2">
-                              {latestApplication.notes}
+                              {cleanApplicationText(latestApplication.notes)}
                             </span>
                           </div>
                         )}
@@ -612,7 +618,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate }:
 
                     {app.notes && (
                       <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-                        <span className="whitespace-pre-wrap">{app.notes}</span>
+                        <span className="whitespace-pre-wrap">{cleanApplicationText(app.notes)}</span>
                       </div>
                     )}
                   </div>
