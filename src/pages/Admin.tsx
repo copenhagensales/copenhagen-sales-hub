@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, Shield, Users, Trash2, Upload } from "lucide-react";
+import { UserPlus, Shield, Users, Trash2, Upload, KeyRound } from "lucide-react";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
 
 interface UserProfile {
@@ -156,6 +156,45 @@ export default function Admin() {
     } catch (error: any) {
       console.error("Error toggling role:", error);
       toast.error("Kunne ikke opdatere rolle");
+    }
+  };
+
+  const handleResetPassword = async (userId: string, userEmail: string) => {
+    if (!confirm(`Er du sikker på, at du vil nulstille adgangskoden for ${userEmail}?`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Ikke logget ind");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-user-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Kunne ikke nulstille adgangskode');
+      }
+
+      toast.success(`Ny adgangskode: ${result.password}\n\nKopier denne og giv den til brugeren.`, {
+        duration: 10000,
+      });
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast.error(error.message || "Kunne ikke nulstille adgangskode");
     }
   };
 
@@ -391,6 +430,14 @@ export default function Admin() {
                           </Button>
                         ))}
                       </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResetPassword(user.id, user.email)}
+                      >
+                        <KeyRound className="h-4 w-4 mr-1" />
+                        Nulstil kode
+                      </Button>
                       <Button
                         size="sm"
                         variant="destructive"
