@@ -41,6 +41,7 @@ import { da } from "date-fns/locale";
 import { Softphone } from "@/components/Softphone";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
+import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Device, Call } from "@twilio/voice-sdk";
@@ -118,6 +119,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, d
   const [isOpen, setIsOpen] = useState(false);
   const [showCallStatus, setShowCallStatus] = useState(false);
   const [showSmsDialog, setShowSmsDialog] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [currentCallSid, setCurrentCallSid] = useState<string>('');
   const [currentCallPhone, setCurrentCallPhone] = useState<string>('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -158,7 +160,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, d
 
   const handleEmailClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    window.location.href = `mailto:${candidate.email}`;
+    setShowEmailDialog(true);
   };
 
   const logCallToDatabase = async (applicationId: string, phoneNumber: string, outcome: string, duration?: number) => {
@@ -859,6 +861,20 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, d
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Email Dialog */}
+      {latestApplication && (
+        <SendEmailDialog
+          open={showEmailDialog}
+          onOpenChange={setShowEmailDialog}
+          candidateEmail={candidate.email}
+          candidateName={`${candidate.first_name} ${candidate.last_name}`}
+          applicationId={latestApplication.id}
+          onEmailSent={() => {
+            if (onUpdate) onUpdate();
+          }}
+        />
+      )}
     </>
   );
 };
