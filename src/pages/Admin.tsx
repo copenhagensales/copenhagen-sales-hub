@@ -159,42 +159,55 @@ export default function Admin() {
     }
   };
 
+  const [resettingPassword, setResettingPassword] = useState<string | null>(null);
+
   const handleResetPassword = async (userId: string, userEmail: string) => {
     if (!confirm(`Er du sikker på, at du vil nulstille adgangskoden for ${userEmail}?`)) {
       return;
     }
 
     try {
+      setResettingPassword(userId);
+      console.log("Starting password reset for user:", userId);
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Ikke logget ind");
         return;
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-user-password`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId }),
-        }
-      );
+      console.log("Making request to reset-user-password function...");
+      
+      const response = await supabase.functions.invoke('reset-user-password', {
+        body: { userId }
+      });
 
-      const result = await response.json();
+      console.log("Response:", response);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Kunne ikke nulstille adgangskode');
+      if (response.error) {
+        throw new Error(response.error.message || 'Kunne ikke nulstille adgangskode');
       }
 
-      toast.success(`Ny adgangskode: ${result.password}\n\nKopier denne og giv den til brugeren.`, {
-        duration: 10000,
-      });
+      if (!response.data || !response.data.password) {
+        throw new Error('Ingen adgangskode returneret');
+      }
+
+      // Copy password to clipboard
+      try {
+        await navigator.clipboard.writeText(response.data.password);
+        toast.success(`Ny adgangskode kopieret til udklipsholder: ${response.data.password}`, {
+          duration: 15000,
+        });
+      } catch {
+        toast.success(`Ny adgangskode: ${response.data.password}. Kopier denne og giv den til brugeren.`, {
+          duration: 15000,
+        });
+      }
     } catch (error: any) {
       console.error("Error resetting password:", error);
       toast.error(error.message || "Kunne ikke nulstille adgangskode");
+    } finally {
+      setResettingPassword(null);
     }
   };
 
@@ -434,9 +447,10 @@ export default function Admin() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleResetPassword(user.id, user.email)}
+                        disabled={resettingPassword === user.id}
                       >
                         <KeyRound className="h-4 w-4 mr-1" />
-                        Nulstil kode
+                        {resettingPassword === user.id ? "Nulstiller..." : "Nulstil kode"}
                       </Button>
                       <Button
                         size="sm"
