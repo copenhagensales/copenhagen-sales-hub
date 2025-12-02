@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Users2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Users2, ChevronDown, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface Team {
   id: string;
@@ -34,8 +40,16 @@ interface Team {
   created_at: string;
 }
 
+interface SubTeam {
+  id: string;
+  team_id: string;
+  name: string;
+  created_at: string;
+}
+
 interface TeamWithCount extends Team {
   employee_count: number;
+  sub_teams: SubTeam[];
 }
 
 const Teams = () => {
@@ -44,6 +58,12 @@ const Teams = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [formData, setFormData] = useState({ name: "", description: "" });
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+  
+  // Sub-team dialog state
+  const [isSubTeamDialogOpen, setIsSubTeamDialogOpen] = useState(false);
+  const [editingSubTeam, setEditingSubTeam] = useState<SubTeam | null>(null);
+  const [subTeamFormData, setSubTeamFormData] = useState({ name: "", teamId: "" });
 
   useEffect(() => {
     fetchTeams();
@@ -58,6 +78,16 @@ const Teams = () => {
     if (teamsError) {
       toast.error("Kunne ikke hente teams");
       return;
+    }
+
+    // Fetch sub-teams
+    const { data: subTeamsData, error: subTeamsError } = await supabase
+      .from("sub_teams")
+      .select("*")
+      .order("name");
+
+    if (subTeamsError) {
+      console.error("Error fetching sub-teams:", subTeamsError);
     }
 
     // Fetch employee counts per team
@@ -79,9 +109,17 @@ const Teams = () => {
       }
     });
 
+    // Group sub-teams by team
+    const subTeamsByTeam = new Map<string, SubTeam[]>();
+    subTeamsData?.forEach((subTeam) => {
+      const existing = subTeamsByTeam.get(subTeam.team_id) || [];
+      subTeamsByTeam.set(subTeam.team_id, [...existing, subTeam]);
+    });
+
     const teamsWithCounts: TeamWithCount[] = (teamsData || []).map((team) => ({
       ...team,
       employee_count: countMap.get(team.id) || 0,
+      sub_teams: subTeamsByTeam.get(team.id) || [],
     }));
 
     setTeams(teamsWithCounts);
@@ -158,6 +196,87 @@ const Teams = () => {
     setFormData({ name: "", description: "" });
   };
 
+  // Sub-team handlers
+  const handleAddSubTeam = (teamId: string) => {
+    setEditingSubTeam(null);
+    setSubTeamFormData({ name: "", teamId });
+    setIsSubTeamDialogOpen(true);
+  };
+
+  const handleEditSubTeam = (subTeam: SubTeam) => {
+    setEditingSubTeam(subTeam);
+    setSubTeamFormData({ name: subTeam.name, teamId: subTeam.team_id });
+    setIsSubTeamDialogOpen(true);
+  };
+
+  const handleSubTeamSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!subTeamFormData.name.trim()) {
+      toast.error("Navn er påkrævet");
+      return;
+    }
+
+    if (editingSubTeam) {
+      const { error } = await supabase
+        .from("sub_teams")
+        .update({ name: subTeamFormData.name })
+        .eq("id", editingSubTeam.id);
+
+      if (error) {
+        toast.error("Kunne ikke opdatere sub-team");
+        return;
+      }
+
+      toast.success("Sub-team opdateret");
+    } else {
+      const { error } = await supabase.from("sub_teams").insert({
+        name: subTeamFormData.name,
+        team_id: subTeamFormData.teamId,
+      });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("Sub-team med dette navn findes allerede");
+        } else {
+          toast.error("Kunne ikke oprette sub-team");
+        }
+        return;
+      }
+
+      toast.success("Sub-team oprettet");
+    }
+
+    setIsSubTeamDialogOpen(false);
+    setEditingSubTeam(null);
+    setSubTeamFormData({ name: "", teamId: "" });
+    fetchTeams();
+  };
+
+  const handleDeleteSubTeam = async (subTeamId: string) => {
+    const { error } = await supabase.from("sub_teams").delete().eq("id", subTeamId);
+
+    if (error) {
+      toast.error("Kunne ikke slette sub-team");
+      return;
+    }
+
+    toast.success("Sub-team slettet");
+    fetchTeams();
+  };
+
+  const toggleTeamExpanded = (teamId: string) => {
+    setExpandedTeams((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamId)) {
+        next.delete(teamId);
+      } else {
+        next.add(teamId);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -167,13 +286,16 @@ const Teams = () => {
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">Teams</h1>
               <p className="text-muted-foreground mt-1">
-                Administrer teams til ansættelser
+                Administrer teams og sub-teams til ansættelser
               </p>
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => setFormData({ name: "", description: "" })}>
+                <Button onClick={() => {
+                  setEditingTeam(null);
+                  setFormData({ name: "", description: "" });
+                }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Tilføj team
                 </Button>
@@ -223,6 +345,46 @@ const Teams = () => {
                 </form>
               </DialogContent>
             </Dialog>
+
+            {/* Sub-team Dialog */}
+            <Dialog open={isSubTeamDialogOpen} onOpenChange={setIsSubTeamDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingSubTeam ? "Rediger sub-team" : "Tilføj sub-team"}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubTeamSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="subTeamName">Navn *</Label>
+                    <Input
+                      id="subTeamName"
+                      value={subTeamFormData.name}
+                      onChange={(e) =>
+                        setSubTeamFormData({ ...subTeamFormData, name: e.target.value })
+                      }
+                      placeholder="f.eks. Tryg"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsSubTeamDialogOpen(false);
+                        setEditingSubTeam(null);
+                        setSubTeamFormData({ name: "", teamId: "" });
+                      }}
+                    >
+                      Annuller
+                    </Button>
+                    <Button type="submit">
+                      {editingSubTeam ? "Gem ændringer" : "Opret sub-team"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {loading ? (
@@ -249,20 +411,47 @@ const Teams = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
+                          {team.sub_teams.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 -ml-1"
+                              onClick={() => toggleTeamExpanded(team.id)}
+                            >
+                              {expandedTeams.has(team.id) ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
                           <h3 className="font-semibold text-foreground">
                             {team.name}
                           </h3>
                           <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                             {team.employee_count} {team.employee_count === 1 ? "ansat" : "ansatte"}
                           </span>
+                          {team.sub_teams.length > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              {team.sub_teams.length} sub-teams
+                            </Badge>
+                          )}
                         </div>
                         {team.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
+                          <p className="text-sm text-muted-foreground mt-1 ml-5">
                             {team.description}
                           </p>
                         )}
                       </div>
                       <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddSubTeam(team.id)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Sub-team
+                        </Button>
                         <Button
                           variant="outline"
                           size="icon"
@@ -281,6 +470,11 @@ const Teams = () => {
                               <AlertDialogTitle>Slet team?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Er du sikker på, at du vil slette "{team.name}"?
+                                {team.sub_teams.length > 0 && (
+                                  <span className="block mt-2 font-medium">
+                                    Dette vil også slette {team.sub_teams.length} sub-teams.
+                                  </span>
+                                )}
                                 Dette kan ikke fortrydes.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
@@ -297,6 +491,60 @@ const Teams = () => {
                         </AlertDialog>
                       </div>
                     </div>
+
+                    {/* Sub-teams list */}
+                    {team.sub_teams.length > 0 && expandedTeams.has(team.id) && (
+                      <div className="mt-4 ml-5 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Sub-teams
+                        </p>
+                        <div className="grid gap-2">
+                          {team.sub_teams.map((subTeam) => (
+                            <div
+                              key={subTeam.id}
+                              className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
+                            >
+                              <span className="text-sm">{subTeam.name}</span>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => handleEditSubTeam(subTeam)}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Slet sub-team?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Er du sikker på, at du vil slette "{subTeam.name}"?
+                                        Dette kan ikke fortrydes.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuller</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteSubTeam(subTeam.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Slet
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
