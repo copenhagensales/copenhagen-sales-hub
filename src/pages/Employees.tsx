@@ -62,6 +62,7 @@ const Employees = () => {
   const [filterTeam, setFilterTeam] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("active");
   const [teams, setTeams] = useState<any[]>([]);
+  const [subTeams, setSubTeams] = useState<any[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
   const [showStopDialog, setShowStopDialog] = useState(false);
@@ -71,6 +72,7 @@ const Employees = () => {
   useEffect(() => {
     fetchEmployees();
     fetchTeams();
+    fetchSubTeams();
   }, [filterStatus]);
 
   const fetchTeams = async () => {
@@ -85,6 +87,24 @@ const Employees = () => {
     } catch (error) {
       console.error("Error fetching teams:", error);
     }
+  };
+
+  const fetchSubTeams = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("sub_teams")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      setSubTeams(data || []);
+    } catch (error) {
+      console.error("Error fetching sub-teams:", error);
+    }
+  };
+
+  const getSubTeamsForTeam = (teamId: string) => {
+    return subTeams.filter(st => st.team_id === teamId);
   };
 
   const fetchEmployees = async () => {
@@ -553,8 +573,8 @@ const Employees = () => {
                             </Select>
                           </div>
 
-                          {/* Sub-team (only for United) */}
-                          {emp.team_id && emp.team?.name === "United" && (
+                          {/* Sub-team (only for teams with sub-teams) */}
+                          {emp.team_id && getSubTeamsForTeam(emp.team_id).length > 0 && (
                             <div className="flex items-center gap-2">
                               <span className="text-sm text-muted-foreground w-20">Underteam:</span>
                               <Select
@@ -570,12 +590,11 @@ const Employees = () => {
                                 </SelectTrigger>
                                 <SelectContent className="bg-popover z-50">
                                   <SelectItem value="none">Intet underteam</SelectItem>
-                                  <SelectItem value="Tryg">Tryg</SelectItem>
-                                  <SelectItem value="ASE">ASE</SelectItem>
-                                  <SelectItem value="Finansforbundet">Finansforbundet</SelectItem>
-                                  <SelectItem value="Business Danmark">Business Danmark</SelectItem>
-                                  <SelectItem value="Codan">Codan</SelectItem>
-                                  <SelectItem value="AKA">AKA</SelectItem>
+                                  {getSubTeamsForTeam(emp.team_id).map(st => (
+                                    <SelectItem key={st.id} value={st.name}>
+                                      {st.name}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </div>

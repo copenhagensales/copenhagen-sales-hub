@@ -45,6 +45,7 @@ const Candidates = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewCandidateDialog, setShowNewCandidateDialog] = useState(false);
   const [teams, setTeams] = useState<any[]>([]);
+  const [subTeams, setSubTeams] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
@@ -55,6 +56,7 @@ const Candidates = () => {
   useEffect(() => {
     fetchCandidates();
     fetchTeams();
+    fetchSubTeams();
 
     // Initialize Twilio Device
     const initializeTwilioDevice = async () => {
@@ -143,6 +145,20 @@ const Candidates = () => {
       setTeams(data || []);
     } catch (error) {
       console.error("Error fetching teams:", error);
+    }
+  };
+
+  const fetchSubTeams = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("sub_teams")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      setSubTeams(data || []);
+    } catch (error) {
+      console.error("Error fetching sub-teams:", error);
     }
   };
 
@@ -313,6 +329,7 @@ const Candidates = () => {
                   candidate={candidate}
                   applications={applications}
                   teams={teams}
+                  subTeams={subTeams}
                   onUpdate={fetchCandidates}
                   deviceRef={deviceRef}
                   callRef={callRef}
