@@ -160,29 +160,22 @@ export default function Admin() {
   };
 
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
+  const [resetPasswordDialog, setResetPasswordDialog] = useState<{userId: string, userEmail: string} | null>(null);
+  const [newPassword, setNewPassword] = useState<string | null>(null);
 
   const handleResetPassword = async (userId: string, userEmail: string) => {
-    if (!confirm(`Er du sikker på, at du vil nulstille adgangskoden for ${userEmail}?`)) {
-      return;
-    }
-
     try {
       setResettingPassword(userId);
-      console.log("Starting password reset for user:", userId);
       
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Ikke logget ind");
         return;
       }
-
-      console.log("Making request to reset-user-password function...");
       
       const response = await supabase.functions.invoke('reset-user-password', {
         body: { userId }
       });
-
-      console.log("Response:", response);
 
       if (response.error) {
         throw new Error(response.error.message || 'Kunne ikke nulstille adgangskode');
@@ -192,22 +185,26 @@ export default function Admin() {
         throw new Error('Ingen adgangskode returneret');
       }
 
-      // Copy password to clipboard
-      try {
-        await navigator.clipboard.writeText(response.data.password);
-        toast.success(`Ny adgangskode kopieret til udklipsholder: ${response.data.password}`, {
-          duration: 15000,
-        });
-      } catch {
-        toast.success(`Ny adgangskode: ${response.data.password}. Kopier denne og giv den til brugeren.`, {
-          duration: 15000,
-        });
-      }
+      // Show password in dialog
+      setNewPassword(response.data.password);
+      setResetPasswordDialog(null);
     } catch (error: any) {
       console.error("Error resetting password:", error);
       toast.error(error.message || "Kunne ikke nulstille adgangskode");
+      setResetPasswordDialog(null);
     } finally {
       setResettingPassword(null);
+    }
+  };
+
+  const copyPasswordToClipboard = async () => {
+    if (newPassword) {
+      try {
+        await navigator.clipboard.writeText(newPassword);
+        toast.success("Adgangskode kopieret til udklipsholder");
+      } catch {
+        toast.error("Kunne ikke kopiere til udklipsholder");
+      }
     }
   };
 
@@ -446,7 +443,7 @@ export default function Admin() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleResetPassword(user.id, user.email)}
+                        onClick={() => setResetPasswordDialog({userId: user.id, userEmail: user.email})}
                         disabled={resettingPassword === user.id}
                       >
                         <KeyRound className="h-4 w-4 mr-1" />
@@ -466,6 +463,54 @@ export default function Admin() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Password Reset Confirmation Dialog */}
+          <Dialog open={resetPasswordDialog !== null} onOpenChange={(open) => !open && setResetPasswordDialog(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nulstil adgangskode</DialogTitle>
+                <DialogDescription>
+                  Er du sikker på, at du vil nulstille adgangskoden for {resetPasswordDialog?.userEmail}?
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setResetPasswordDialog(null)}>
+                  Annuller
+                </Button>
+                <Button 
+                  onClick={() => resetPasswordDialog && handleResetPassword(resetPasswordDialog.userId, resetPasswordDialog.userEmail)}
+                  disabled={resettingPassword !== null}
+                >
+                  {resettingPassword ? "Nulstiller..." : "Ja, nulstil"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* New Password Display Dialog */}
+          <Dialog open={newPassword !== null} onOpenChange={(open) => !open && setNewPassword(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Ny adgangskode</DialogTitle>
+                <DialogDescription>
+                  Adgangskoden er blevet nulstillet. Kopier denne og giv den til brugeren.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <code className="text-lg font-mono">{newPassword}</code>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={copyPasswordToClipboard} className="flex-1">
+                    Kopier adgangskode
+                  </Button>
+                  <Button variant="outline" onClick={() => setNewPassword(null)}>
+                    Luk
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
