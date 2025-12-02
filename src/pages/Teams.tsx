@@ -34,8 +34,12 @@ interface Team {
   created_at: string;
 }
 
+interface TeamWithCount extends Team {
+  employee_count: number;
+}
+
 const Teams = () => {
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<TeamWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
@@ -46,17 +50,41 @@ const Teams = () => {
   }, []);
 
   const fetchTeams = async () => {
-    const { data, error } = await supabase
+    const { data: teamsData, error: teamsError } = await supabase
       .from("teams")
       .select("*")
       .order("name");
 
-    if (error) {
+    if (teamsError) {
       toast.error("Kunne ikke hente teams");
       return;
     }
 
-    setTeams(data || []);
+    // Fetch employee counts per team
+    const { data: employeeCounts, error: countError } = await supabase
+      .from("applications")
+      .select("team_id")
+      .eq("status", "ansat")
+      .not("team_id", "is", null);
+
+    if (countError) {
+      console.error("Error fetching employee counts:", countError);
+    }
+
+    // Count employees per team
+    const countMap = new Map<string, number>();
+    employeeCounts?.forEach((app) => {
+      if (app.team_id) {
+        countMap.set(app.team_id, (countMap.get(app.team_id) || 0) + 1);
+      }
+    });
+
+    const teamsWithCounts: TeamWithCount[] = (teamsData || []).map((team) => ({
+      ...team,
+      employee_count: countMap.get(team.id) || 0,
+    }));
+
+    setTeams(teamsWithCounts);
     setLoading(false);
   };
 
@@ -220,9 +248,14 @@ const Teams = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-foreground">
-                          {team.name}
-                        </h3>
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-semibold text-foreground">
+                            {team.name}
+                          </h3>
+                          <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                            {team.employee_count} {team.employee_count === 1 ? "ansat" : "ansatte"}
+                          </span>
+                        </div>
                         {team.description && (
                           <p className="text-sm text-muted-foreground mt-1">
                             {team.description}
