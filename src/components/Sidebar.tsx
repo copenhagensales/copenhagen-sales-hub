@@ -70,6 +70,23 @@ export const Sidebar = () => {
         () => {
           fetchNewCandidatesCount();
           fetchWinbackCount();
+          fetchOverdueContributionCount();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to changes in revenue_data for contribution margin updates
+    const revenueChannel = supabase
+      .channel('revenue-data-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'revenue_data'
+        },
+        () => {
+          fetchOverdueContributionCount();
         }
       )
       .subscribe();
@@ -77,6 +94,7 @@ export const Sidebar = () => {
     return () => {
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(applicationsChannel);
+      supabase.removeChannel(revenueChannel);
     };
   }, []);
 
