@@ -684,6 +684,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, d
                           <SelectItem value="Facebook">Facebook</SelectItem>
                           <SelectItem value="Instagram">Instagram</SelectItem>
                           <SelectItem value="TikTok">TikTok</SelectItem>
+                          <SelectItem value="LinkedIn">LinkedIn</SelectItem>
                           <SelectItem value="Jobindex">Jobindex</SelectItem>
                           <SelectItem value="Google">Google</SelectItem>
                           <SelectItem value="Ven">Ven</SelectItem>
