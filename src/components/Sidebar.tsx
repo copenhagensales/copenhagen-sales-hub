@@ -30,12 +30,14 @@ export const Sidebar = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [newCandidatesCount, setNewCandidatesCount] = useState(0);
   const [winbackCount, setWinbackCount] = useState(0);
+  const [overdueContributionCount, setOverdueContributionCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchUnreadCount();
     fetchNewCandidatesCount();
     fetchWinbackCount();
+    fetchOverdueContributionCount();
     checkAdminRole();
 
     // Subscribe to changes in communication_logs
@@ -107,6 +109,44 @@ export const Sidebar = () => {
     setWinbackCount(count || 0);
   };
 
+  const fetchOverdueContributionCount = async () => {
+    // Fetch hired employees with their contribution margin data
+    const { data: hiredApplications } = await supabase
+      .from('applications')
+      .select(`
+        id,
+        hired_date,
+        revenue_data (period, revenue)
+      `)
+      .eq('status', 'ansat')
+      .not('hired_date', 'is', null);
+
+    if (!hiredApplications) {
+      setOverdueContributionCount(0);
+      return;
+    }
+
+    const today = new Date();
+    let overdueCount = 0;
+
+    hiredApplications.forEach((app: any) => {
+      if (!app.hired_date) return;
+      
+      const hiredDate = new Date(app.hired_date);
+      const daysSinceHire = Math.floor((today.getTime() - hiredDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      const revenueData = app.revenue_data || [];
+      const periods = revenueData.map((r: any) => r.period);
+      
+      // Check each period
+      if (daysSinceHire >= 30 && !periods.includes(30)) overdueCount++;
+      if (daysSinceHire >= 60 && !periods.includes(60)) overdueCount++;
+      if (daysSinceHire >= 90 && !periods.includes(90)) overdueCount++;
+    });
+
+    setOverdueContributionCount(overdueCount);
+  };
+
   const checkAdminRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -130,7 +170,7 @@ export const Sidebar = () => {
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/candidates", icon: Users, label: "Kandidater", badge: newCandidatesCount },
     { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
-    { to: "/employees", icon: Briefcase, label: "Ansatte" },
+    { to: "/employees", icon: Briefcase, label: "Ansatte", badge: overdueContributionCount },
     { to: "/upcoming-hires", icon: CalendarCheck, label: "Kommende ansættelser" },
     { to: "/winback", icon: RotateCcw, label: "Winback", badge: winbackCount },
     { to: "/reports", icon: BarChart3, label: "Rapporter" },
