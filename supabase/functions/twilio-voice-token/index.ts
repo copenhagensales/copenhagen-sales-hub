@@ -81,15 +81,12 @@ async function handleTokenRequest(req: Request) {
     throw new Error("Faltan credenciales de Twilio en Supabase Secrets");
   }
 
-  // Identidad por defecto si no viene en el body
-  let identity = "user_" + Math.floor(Math.random() * 1000);
-
-  try {
-    const body = await req.json();
-    if (body?.identity) identity = body.identity;
-  } catch (e) {
-    // Si el body está vacío, usamos la identidad generada arriba
-  }
+  // IMPORTANT: Always use "agent" identity for incoming calls to work
+  // The incoming-call edge function routes calls to <Client>agent</Client>
+  // so this device must be registered with the same identity
+  const identity = "agent";
+  
+  console.log(`Generating token for identity: ${identity}`);
 
   // Crear el payload del token
   const payload = {
