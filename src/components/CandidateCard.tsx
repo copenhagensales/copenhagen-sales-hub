@@ -38,7 +38,6 @@ import {
 } from "lucide-react";
 import { format, differenceInHours, differenceInDays } from "date-fns";
 import { da } from "date-fns/locale";
-import { Softphone } from "@/components/Softphone";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
 import { SendEmailDialog } from "@/components/SendEmailDialog";

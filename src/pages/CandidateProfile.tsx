@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { NewApplicationDialog } from "@/components/NewApplicationDialog";
 import { EditCandidateDialog } from "@/components/EditCandidateDialog";
-import { Softphone } from "@/components/Softphone";
+import { useSoftphone } from "@/contexts/SoftphoneContext";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -112,8 +112,7 @@ const CandidateProfile = () => {
   const [loading, setLoading] = useState(true);
   const [showNewApplicationDialog, setShowNewApplicationDialog] = useState(false);
   const [showEditCandidateDialog, setShowEditCandidateDialog] = useState(false);
-  const [showSoftphone, setShowSoftphone] = useState(false);
-  const [softphoneInitialNumber, setSoftphoneInitialNumber] = useState<string>("");
+  const { openSoftphone } = useSoftphone();
   const [userId, setUserId] = useState<string>("");
   const [showHiredDateDialog, setShowHiredDateDialog] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ applicationId: string; newStatus: string } | null>(
@@ -1135,16 +1134,7 @@ const CandidateProfile = () => {
         onSuccess={fetchCandidateData}
       />
 
-      {showSoftphone && userId && (
-        <Softphone
-          userId={userId}
-          initialPhoneNumber={softphoneInitialNumber}
-          onClose={() => {
-            setShowSoftphone(false);
-            setSoftphoneInitialNumber("");
-          }}
-        />
-      )}
+      {/* Softphone is now handled globally via SoftphoneContext */}
 
       {candidate && (
         <EditCandidateDialog
