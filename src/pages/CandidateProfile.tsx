@@ -669,9 +669,19 @@ const CandidateProfile = () => {
                   <CardContent className="space-y-4">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Mail className="h-4 w-4" />
-                      <a href={`mailto:${candidate.email}`} className="hover:text-primary">
+                      <button
+                        onClick={() => {
+                          if (applications.length > 0) {
+                            setEmailApplicationId(applications[0].id);
+                            setShowEmailDialog(true);
+                          } else {
+                            toast.error("Ingen ansøgninger fundet");
+                          }
+                        }}
+                        className="hover:text-primary hover:underline cursor-pointer text-left"
+                      >
                         {candidate.email}
-                      </a>
+                      </button>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Phone className="h-4 w-4" />
