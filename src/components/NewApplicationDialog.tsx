@@ -40,10 +40,12 @@ export const NewApplicationDialog = ({
   const [nextStep, setNextStep] = useState("");
   const [deadline, setDeadline] = useState("");
   const [teams, setTeams] = useState<any[]>([]);
+  const [subTeams, setSubTeams] = useState<any[]>([]);
 
   useEffect(() => {
     if (open) {
       fetchTeams();
+      fetchSubTeams();
     }
   }, [open]);
 
@@ -59,6 +61,24 @@ export const NewApplicationDialog = ({
     } catch (error) {
       console.error("Error fetching teams:", error);
     }
+  };
+
+  const fetchSubTeams = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("sub_teams")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      setSubTeams(data || []);
+    } catch (error) {
+      console.error("Error fetching sub-teams:", error);
+    }
+  };
+
+  const getSubTeamsForTeam = (teamId: string) => {
+    return subTeams.filter(st => st.team_id === teamId);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -195,7 +215,7 @@ export const NewApplicationDialog = ({
             </Select>
           </div>
 
-          {teamId && teams.find(t => t.id === teamId)?.name === "United" && (
+          {teamId && getSubTeamsForTeam(teamId).length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="subteam">Underteam</Label>
               <Select value={subTeam} onValueChange={setSubTeam}>
@@ -204,12 +224,11 @@ export const NewApplicationDialog = ({
                 </SelectTrigger>
                 <SelectContent className="bg-popover z-50">
                   <SelectItem value="">Intet underteam</SelectItem>
-                  <SelectItem value="Tryg">Tryg</SelectItem>
-                  <SelectItem value="ASE">ASE</SelectItem>
-                  <SelectItem value="Finansforbundet">Finansforbundet</SelectItem>
-                  <SelectItem value="Business Danmark">Business Danmark</SelectItem>
-                  <SelectItem value="Codan">Codan</SelectItem>
-                  <SelectItem value="AKA">AKA</SelectItem>
+                  {getSubTeamsForTeam(teamId).map(st => (
+                    <SelectItem key={st.id} value={st.name}>
+                      {st.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

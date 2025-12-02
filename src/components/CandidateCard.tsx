@@ -60,6 +60,12 @@ interface Application {
   hired_date?: string;
 }
 
+interface SubTeam {
+  id: string;
+  team_id: string;
+  name: string;
+}
+
 interface CandidateCardProps {
   candidate: {
     id: string;
@@ -73,6 +79,7 @@ interface CandidateCardProps {
   };
   applications: Application[];
   teams?: any[];
+  subTeams?: SubTeam[];
   onUpdate?: () => void;
   deviceRef?: MutableRefObject<Device | null>;
   callRef?: MutableRefObject<Call | null>;
@@ -114,7 +121,11 @@ const roleColors: Record<string, string> = {
   salgskonsulent: "bg-role-salgskonsulent/10 text-role-salgskonsulent border-role-salgskonsulent/20",
 };
 
-export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, deviceRef, callRef, activeCall, setActiveCall }: CandidateCardProps) => {
+export const CandidateCard = ({ candidate, applications, teams = [], subTeams = [], onUpdate, deviceRef, callRef, activeCall, setActiveCall }: CandidateCardProps) => {
+
+  const getSubTeamsForTeam = (teamId: string) => {
+    return subTeams.filter(st => st.team_id === teamId);
+  };
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showCallStatus, setShowCallStatus] = useState(false);
@@ -720,7 +731,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, d
                           </Select>
                         </div>
                         
-                        {app.team_id && teams.find(t => t.id === app.team_id)?.name === "United" && (
+                        {app.team_id && getSubTeamsForTeam(app.team_id).length > 0 && (
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">Underteam:</span>
                             <Select
@@ -734,12 +745,11 @@ export const CandidateCard = ({ candidate, applications, teams = [], onUpdate, d
                               </SelectTrigger>
                               <SelectContent className="bg-popover z-50">
                                 <SelectItem value="none">Intet underteam</SelectItem>
-                                <SelectItem value="Tryg">Tryg</SelectItem>
-                                <SelectItem value="ASE">ASE</SelectItem>
-                                <SelectItem value="Finansforbundet">Finansforbundet</SelectItem>
-                                <SelectItem value="Business Danmark">Business Danmark</SelectItem>
-                                <SelectItem value="Codan">Codan</SelectItem>
-                                <SelectItem value="AKA">AKA</SelectItem>
+                                {getSubTeamsForTeam(app.team_id).map(st => (
+                                  <SelectItem key={st.id} value={st.name}>
+                                    {st.name}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>
