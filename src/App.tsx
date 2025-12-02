@@ -22,6 +22,7 @@ import Winback from "./pages/Winback";
 import Admin from "./pages/Admin";
 import SmsTemplates from "./pages/SmsTemplates";
 import EmailTemplates from "./pages/EmailTemplates";
+import Teams from "./pages/Teams";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -111,6 +112,10 @@ const App = () => {
             <Route
               path="/email-templates"
               element={session ? <EmailTemplates /> : <Navigate to="/auth" replace />}
+            />
+            <Route
+              path="/teams"
+              element={session ? <Teams /> : <Navigate to="/auth" replace />}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>

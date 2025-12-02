@@ -18,7 +18,8 @@ import {
   Shield,
   MessageCircle,
   Mail,
-  RotateCcw
+  RotateCcw,
+  Users2
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "@/assets/cph-sales-logo.png";
@@ -136,6 +137,7 @@ export const Sidebar = () => {
   ];
 
   const adminNavItems = [
+    { to: "/teams", icon: Users2, label: "Teams" },
     { to: "/sms-templates", icon: MessageCircle, label: "SMS-skabeloner" },
     { to: "/email-templates", icon: Mail, label: "Email-skabeloner" },
     { to: "/admin", icon: Shield, label: "Admin" },
