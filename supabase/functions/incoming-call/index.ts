@@ -15,18 +15,27 @@ serve(async (req) => {
     const formData = await req.formData();
     const from = formData.get('From');
     const to = formData.get('To');
+    const callSid = formData.get('CallSid');
+    const callStatus = formData.get('CallStatus');
     
-    console.log(`Incoming call from ${from} to ${to}`);
+    console.log(`=== Incoming Call ===`);
+    console.log(`From: ${from}`);
+    console.log(`To: ${to}`);
+    console.log(`CallSid: ${callSid}`);
+    console.log(`CallStatus: ${callStatus}`);
 
     // Generate TwiML to connect the incoming call to the agent's softphone
-    // This uses Twilio Client to route to the web-based softphone
+    // IMPORTANT: The identity "agent" must match the identity used when generating
+    // the Twilio access token in twilio-voice-token function
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say language="da-DK">Forbinder dig til en agent</Say>
   <Dial>
     <Client>agent</Client>
   </Dial>
 </Response>`;
+
+    console.log(`Routing call to Client: agent`);
+    console.log(`TwiML Response:`, twiml);
 
     return new Response(twiml, {
       status: 200,
