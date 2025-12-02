@@ -851,13 +851,14 @@ const CandidateProfile = () => {
                               </SelectTrigger>
                               <SelectContent className="bg-popover z-50">
                                 <SelectItem value="none">Ikke angivet</SelectItem>
-                                <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                                <SelectItem value="Jobindex">Jobindex</SelectItem>
-                                <SelectItem value="Indeed">Indeed</SelectItem>
+                                <SelectItem value="Hjemmesiden">Hjemmesiden</SelectItem>
                                 <SelectItem value="Facebook">Facebook</SelectItem>
-                                <SelectItem value="Direkte">Direkte</SelectItem>
-                                <SelectItem value="Referral">Referral</SelectItem>
-                                <SelectItem value="Zapier">Zapier</SelectItem>
+                                <SelectItem value="Instagram">Instagram</SelectItem>
+                                <SelectItem value="TikTok">TikTok</SelectItem>
+                                <SelectItem value="Jobindex">Jobindex</SelectItem>
+                                <SelectItem value="Google">Google</SelectItem>
+                                <SelectItem value="Ven">Ven</SelectItem>
+                                <SelectItem value="Anbefaling">Anbefaling</SelectItem>
                                 <SelectItem value="Andet">Andet</SelectItem>
                               </SelectContent>
                             </Select>
