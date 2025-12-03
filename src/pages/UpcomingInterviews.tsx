@@ -3,22 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar, Users, Phone, Mail, CalendarPlus } from "lucide-react";
+import { Calendar, Phone, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface UpcomingInterview {
   id: string;
@@ -43,12 +31,7 @@ interface GroupedInterview {
 const UpcomingInterviews = () => {
   const [upcomingInterviews, setUpcomingInterviews] = useState<GroupedInterview[]>([]);
   const [loading, setLoading] = useState(true);
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<GroupedInterview | null>(null);
-  const [recipientEmail, setRecipientEmail] = useState("");
-  const [sendingInvite, setSendingInvite] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchUpcomingInterviews();
@@ -113,63 +96,6 @@ const UpcomingInterviews = () => {
     }
   };
 
-  const openInviteDialog = (group: GroupedInterview, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedGroup(group);
-    setRecipientEmail("");
-    setInviteDialogOpen(true);
-  };
-
-  const sendCalendarInvite = async () => {
-    if (!selectedGroup || !recipientEmail) return;
-
-    setSendingInvite(true);
-    try {
-      // Duration: 30 min for 1 person, 90 min for more
-      const durationMinutes = selectedGroup.count === 1 ? 30 : 90;
-      
-      // Use the first interview's time for the start
-      const firstInterview = selectedGroup.interviews[0];
-      const startDateTime = firstInterview.interview_date;
-
-      const attendees = selectedGroup.interviews.map((interview) => ({
-        name: `${interview.candidate.first_name} ${interview.candidate.last_name}`,
-        email: interview.candidate.email,
-      }));
-
-      const candidateNames = attendees.map((a) => a.name).join(", ");
-
-      const response = await supabase.functions.invoke("send-calendar-invite", {
-        body: {
-          recipientEmail,
-          subject: `Jobsamtale - ${candidateNames}`,
-          startDateTime,
-          durationMinutes,
-          attendees,
-          description: `Jobsamtale med ${candidateNames}.\n\nVarighed: ${durationMinutes} minutter`,
-        },
-      });
-
-      if (response.error) throw response.error;
-
-      toast({
-        title: "Invitation sendt",
-        description: `Kalenderinvitation sendt til ${recipientEmail}`,
-      });
-
-      setInviteDialogOpen(false);
-    } catch (error: any) {
-      console.error("Error sending calendar invite:", error);
-      toast({
-        title: "Fejl",
-        description: error.message || "Kunne ikke sende kalenderinvitation",
-        variant: "destructive",
-      });
-    } finally {
-      setSendingInvite(false);
-    }
-  };
-
   const roleLabels: Record<string, string> = {
     fieldmarketing: "Fieldmarketing",
     salgskonsulent: "Salgskonsulent",
@@ -212,19 +138,9 @@ const UpcomingInterviews = () => {
                           })}
                         </CardTitle>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => openInviteDialog(group, e)}
-                        >
-                          <CalendarPlus className="h-4 w-4 mr-2" />
-                          Send invitation
-                        </Button>
-                        <Badge variant="outline" className="text-sm">
-                          {group.count} {group.count === 1 ? "samtale" : "samtaler"}
-                        </Badge>
-                      </div>
+                      <Badge variant="outline" className="text-sm">
+                        {group.count} {group.count === 1 ? "samtale" : "samtaler"}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -268,63 +184,6 @@ const UpcomingInterviews = () => {
           )}
         </div>
       </div>
-
-      {/* Calendar Invite Dialog */}
-      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Send kalenderinvitation</DialogTitle>
-            <DialogDescription>
-              {selectedGroup && (
-                <>
-                  Send Outlook-invitation for {selectedGroup.count}{" "}
-                  {selectedGroup.count === 1 ? "samtale" : "samtaler"} den{" "}
-                  {format(new Date(selectedGroup.date), "d. MMMM yyyy", { locale: da })}
-                  <br />
-                  <span className="text-sm">
-                    Varighed: {selectedGroup.count === 1 ? "30 minutter" : "1,5 time"}
-                  </span>
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="recipientEmail">Modtager email</Label>
-              <Input
-                id="recipientEmail"
-                type="email"
-                placeholder="email@example.com"
-                value={recipientEmail}
-                onChange={(e) => setRecipientEmail(e.target.value)}
-              />
-            </div>
-            {selectedGroup && (
-              <div className="space-y-2">
-                <Label>Deltagere</Label>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  {selectedGroup.interviews.map((interview) => (
-                    <div key={interview.id}>
-                      {interview.candidate.first_name} {interview.candidate.last_name} ({interview.candidate.email})
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
-              Annuller
-            </Button>
-            <Button
-              onClick={sendCalendarInvite}
-              disabled={!recipientEmail || sendingInvite}
-            >
-              {sendingInvite ? "Sender..." : "Send invitation"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

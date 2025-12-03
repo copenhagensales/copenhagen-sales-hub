@@ -32,6 +32,3 @@ verify_jwt = false
 
 [functions.bulk-import-candidates]
 verify_jwt = false
-
-[functions.send-calendar-invite]
-verify_jwt = false
