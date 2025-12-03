@@ -132,6 +132,8 @@ const CandidateProfile = () => {
   const [editHiredDate, setEditHiredDate] = useState<string>("");
   const [editingApplicationId, setEditingApplicationId] = useState<string>("");
   const [showWelcomeSmsDialog, setShowWelcomeSmsDialog] = useState(false);
+  const [showFollowupDialog, setShowFollowupDialog] = useState(false);
+  const [followupDate, setFollowupDate] = useState<string>("");
   const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const deviceRef = useRef<Device | null>(null);
@@ -456,6 +458,31 @@ const CandidateProfile = () => {
       fetchCandidateData();
     } catch (error: any) {
       toast.error("Kunne ikke opdatere opstartsdato");
+      console.error(error);
+    }
+  };
+
+  const handleSetFollowupDate = async () => {
+    if (!followupDate || !editingApplicationId) {
+      toast.error("Opfølgningsdato er påkrævet");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ deadline: followupDate })
+        .eq("id", editingApplicationId);
+
+      if (error) throw error;
+
+      toast.success("Opfølgningsdato sat!");
+      setShowFollowupDialog(false);
+      setFollowupDate("");
+      setEditingApplicationId("");
+      fetchCandidateData();
+    } catch (error: any) {
+      toast.error("Kunne ikke sætte opfølgningsdato");
       console.error(error);
     }
   };
@@ -937,7 +964,30 @@ const CandidateProfile = () => {
                                 </Button>
                               </div>
                             ) : (
-                              <p className="text-sm text-muted-foreground">Ingen opstartsdato angivet</p>
+                              <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">Ingen opstartsdato angivet</p>
+                                {applications[0].deadline && (
+                                  <div className="text-sm">
+                                    <span className="text-muted-foreground">Opfølgning: </span>
+                                    <span className="font-medium">
+                                      {format(new Date(applications[0].deadline), "d. MMMM yyyy", { locale: da })}
+                                    </span>
+                                  </div>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditingApplicationId(applications[0].id);
+                                    setFollowupDate(applications[0].deadline || new Date().toISOString().split("T")[0]);
+                                    setShowFollowupDialog(true);
+                                  }}
+                                  className="w-full"
+                                >
+                                  <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                                  {applications[0].deadline ? "Rediger opfølgning" : "Opfølgning"}
+                                </Button>
+                              </div>
                             )}
                           </>
                         ) : (
@@ -1282,6 +1332,35 @@ const CandidateProfile = () => {
                 Annuller
               </Button>
               <Button onClick={handleEditHiredDate}>Gem ændringer</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Followup Date Dialog */}
+      <Dialog open={showFollowupDialog} onOpenChange={setShowFollowupDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sæt opfølgningsdato</DialogTitle>
+            <DialogDescription>Vælg en dato for opfølgning - medarbejderen vises i ansatte på denne dato</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Opfølgningsdato *</Label>
+              <Input type="date" value={followupDate} onChange={(e) => setFollowupDate(e.target.value)} required />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowFollowupDialog(false);
+                  setFollowupDate("");
+                  setEditingApplicationId("");
+                }}
+              >
+                Annuller
+              </Button>
+              <Button onClick={handleSetFollowupDate}>Gem opfølgning</Button>
             </div>
           </div>
         </DialogContent>
