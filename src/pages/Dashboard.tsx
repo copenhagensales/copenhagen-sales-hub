@@ -84,6 +84,28 @@ const Dashboard = () => {
   const [teamForecastData, setTeamForecastData] = useState<TeamForecast[]>([]);
   const [dailyApplicationData, setDailyApplicationData] = useState<DailyApplicationData[]>([]);
 
+  // Play notification sound for new applications
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.log('Could not play notification sound:', error);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
     fetchTeamHires();
@@ -98,12 +120,26 @@ const Dashboard = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'applications',
         },
         () => {
-          // Refresh stats when applications change
+          // Play sound and refresh stats when new application arrives
+          playNotificationSound();
+          fetchStats();
+          fetchDailyApplications();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'applications',
+        },
+        () => {
+          // Refresh stats when applications are updated
           fetchStats();
           fetchDailyApplications();
           fetchMissingStartDateCount();
