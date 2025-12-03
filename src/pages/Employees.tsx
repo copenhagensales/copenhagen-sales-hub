@@ -26,7 +26,8 @@ interface Employee {
   role: string;
   team_id: string;
   sub_team?: string;
-  hired_date: string;
+  hired_date: string | null;
+  deadline?: string;
   employment_ended_date?: string;
   employment_end_reason?: string;
   candidate: {
@@ -118,13 +119,14 @@ const Employees = () => {
           team_id,
           sub_team,
           hired_date,
+          deadline,
           employment_ended_date,
           employment_end_reason,
           candidate:candidates(first_name, last_name, email, phone),
           team:teams(name)
         `)
         .eq("status", "ansat")
-        .order("hired_date", { ascending: false });
+        .order("hired_date", { ascending: false, nullsFirst: true });
 
       if (filterStatus === "active") {
         query = query.is("employment_ended_date", null);
@@ -327,6 +329,19 @@ const Employees = () => {
     salgskonsulent: "Salgskonsulent",
   };
 
+  // Check if employee is missing hired_date but has a deadline that passed
+  const isMissingHiredDate = (emp: Employee) => {
+    if (emp.hired_date || emp.employment_ended_date) return false;
+    if (!emp.deadline) return false;
+    
+    const deadlineDate = new Date(emp.deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    deadlineDate.setHours(0, 0, 0, 0);
+    
+    return deadlineDate <= today;
+  };
+
   // Check if revenue data is overdue based on hire date
   const isRevenueOverdue = (emp: Employee, period: number) => {
     if (!emp.hired_date || emp.employment_ended_date) return false;
@@ -352,9 +367,21 @@ const Employees = () => {
 
     const matchesTeam = filterTeam === "all" || emp.team_id === filterTeam;
 
-    return matchesSearch && matchesTeam;
+    // Only show employees with hired_date OR with deadline that has passed
+    const hasHiredDate = !!emp.hired_date;
+    const hasPassedDeadline = isMissingHiredDate(emp);
+    const shouldShow = hasHiredDate || hasPassedDeadline;
+
+    return matchesSearch && matchesTeam && shouldShow;
   }).sort((a, b) => {
-    // Sort by overdue status first (overdue employees at top)
+    // Sort by missing hired date first (at top)
+    const aMissingHired = isMissingHiredDate(a);
+    const bMissingHired = isMissingHiredDate(b);
+    
+    if (aMissingHired && !bMissingHired) return -1;
+    if (!aMissingHired && bMissingHired) return 1;
+    
+    // Then by overdue revenue status
     const aOverdue = isRevenueOverdue(a, 30) || isRevenueOverdue(a, 60) || isRevenueOverdue(a, 90);
     const bOverdue = isRevenueOverdue(b, 30) || isRevenueOverdue(b, 60) || isRevenueOverdue(b, 90);
     
@@ -362,7 +389,9 @@ const Employees = () => {
     if (!aOverdue && bOverdue) return 1;
     
     // Then by hire date (newest first)
-    return new Date(b.hired_date).getTime() - new Date(a.hired_date).getTime();
+    const aDate = a.hired_date ? new Date(a.hired_date).getTime() : 0;
+    const bDate = b.hired_date ? new Date(b.hired_date).getTime() : 0;
+    return bDate - aDate;
   });
 
   const activeCount = employees.filter((e) => !e.employment_ended_date).length;
@@ -481,10 +510,17 @@ const Employees = () => {
             ) : (
               filteredEmployees.map((emp) => {
                 const hasOverdueRevenue = isRevenueOverdue(emp, 30) || isRevenueOverdue(emp, 60) || isRevenueOverdue(emp, 90);
+                const missingHiredDate = isMissingHiredDate(emp);
                 
                 return (
-                <Card key={emp.id} className={hasOverdueRevenue ? "border-destructive border-2" : ""}>
+                <Card key={emp.id} className={missingHiredDate ? "border-orange-500 border-2" : hasOverdueRevenue ? "border-destructive border-2" : ""}>
                   <CardContent className="p-6">
+                    {missingHiredDate && (
+                      <div className="mb-4 p-2 bg-orange-500/10 text-orange-600 text-sm font-medium rounded flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Mangler opstartsdato
+                      </div>
+                    )}
                     {emp.employment_ended_date && (
                       <div className="mb-4 p-3 bg-muted text-muted-foreground text-sm font-medium rounded flex items-center gap-2">
                         <Badge variant="outline" className="bg-status-rejected/10 text-status-rejected border-status-rejected/20">
@@ -498,7 +534,7 @@ const Employees = () => {
                         )}
                       </div>
                     )}
-                    {hasOverdueRevenue && (
+                    {hasOverdueRevenue && !missingHiredDate && (
                       <div className="mb-4 p-2 bg-destructive/10 text-destructive text-sm font-medium rounded flex items-center gap-2">
                         <AlertCircle className="h-4 w-4" />
                         Mangler dækningsbidrag data
@@ -624,7 +660,7 @@ const Employees = () => {
                             <span className="text-sm text-muted-foreground w-20">Ansat:</span>
                             <Input
                               type="date"
-                              value={emp.hired_date}
+                              value={emp.hired_date || ""}
                               onChange={(e) => handleHiredDateChange(emp.id, e.target.value)}
                               className="h-8 w-auto"
                             />
