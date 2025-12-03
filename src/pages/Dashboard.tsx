@@ -55,6 +55,15 @@ interface DailyApplicationData {
   count: number;
 }
 
+interface MissingStartDateCandidate {
+  applicationId: string;
+  candidateId: string;
+  firstName: string;
+  lastName: string;
+  teamName: string | null;
+  deadline: string | null;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
@@ -66,7 +75,7 @@ const Dashboard = () => {
     trend7Days: 0,
     trend30Days: 0,
   });
-  const [missingStartDateCount, setMissingStartDateCount] = useState(0);
+  const [missingStartDateCandidates, setMissingStartDateCandidates] = useState<MissingStartDateCandidate[]>([]);
   const [teamHires, setTeamHires] = useState<TeamHire[]>([]);
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
   const [conversionData, setConversionData] = useState<TeamConversion[]>([]);
@@ -90,16 +99,43 @@ const Dashboard = () => {
 
   const fetchMissingStartDateCount = async () => {
     try {
-      const { count, error } = await supabase
+      // Fetch teams for name lookup
+      const { data: teams } = await supabase
+        .from("teams")
+        .select("id, name");
+
+      const teamMap = new Map(teams?.map(t => [t.id, t.name]) || []);
+
+      // Fetch applications missing start date with candidate info
+      const { data: applications, error } = await supabase
         .from("applications")
-        .select("*", { count: "exact", head: true })
+        .select(`
+          id,
+          team_id,
+          deadline,
+          candidates!inner (
+            id,
+            first_name,
+            last_name
+          )
+        `)
         .eq("status", "ansat")
         .is("hired_date", null);
 
       if (error) throw error;
-      setMissingStartDateCount(count || 0);
+
+      const candidates: MissingStartDateCandidate[] = (applications || []).map(app => ({
+        applicationId: app.id,
+        candidateId: (app.candidates as any).id,
+        firstName: (app.candidates as any).first_name,
+        lastName: (app.candidates as any).last_name,
+        teamName: app.team_id ? teamMap.get(app.team_id) || null : null,
+        deadline: app.deadline,
+      }));
+
+      setMissingStartDateCandidates(candidates);
     } catch (error) {
-      console.error("Error fetching missing start date count:", error);
+      console.error("Error fetching missing start date candidates:", error);
     }
   };
 
@@ -695,30 +731,57 @@ const Dashboard = () => {
           </div>
 
           {/* Missing Start Date Warning */}
-          {missingStartDateCount > 0 && (
+          {missingStartDateCandidates.length > 0 && (
             <Card className="mb-6 border-amber-500/50 bg-amber-500/5">
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/10 rounded-full">
-                    <UserX className="h-5 w-5 text-amber-600" />
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-500/10 rounded-full">
+                      <UserX className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-medium text-amber-700 dark:text-amber-500">
+                        {missingStartDateCandidates.length} ansat{missingStartDateCandidates.length !== 1 ? 'te' : ''} mangler opstartsdato
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Klik på en kandidat for at sætte opstartsdato
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-amber-700 dark:text-amber-500">
-                      {missingStartDateCount} ansat{missingStartDateCount !== 1 ? 'te' : ''} mangler opstartsdato
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Gå til ansatte for at sætte opfølgningsdato eller opstartsdato
-                    </p>
-                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10"
+                    onClick={() => navigate('/employees')}
+                  >
+                    Gå til ansatte
+                  </Button>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10"
-                  onClick={() => navigate('/employees')}
-                >
-                  Gå til ansatte
-                </Button>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {missingStartDateCandidates.map((candidate) => (
+                    <div
+                      key={candidate.applicationId}
+                      className="flex items-center justify-between p-3 rounded-lg bg-background hover:bg-muted/50 cursor-pointer transition-colors border"
+                      onClick={() => navigate(`/candidates/${candidate.candidateId}`)}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sm">
+                          {candidate.firstName} {candidate.lastName}
+                        </span>
+                        {candidate.teamName && (
+                          <span className="text-xs text-muted-foreground">{candidate.teamName}</span>
+                        )}
+                      </div>
+                      {candidate.deadline && (
+                        <Badge variant="secondary" className="text-xs">
+                          Opfølgning: {format(new Date(candidate.deadline), "d. MMM", { locale: da })}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
