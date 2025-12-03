@@ -19,6 +19,7 @@ import Employees from "./pages/Employees";
 import Messages from "./pages/Messages";
 import Reports from "./pages/Reports";
 import UpcomingHires from "./pages/UpcomingHires";
+import UpcomingInterviews from "./pages/UpcomingInterviews";
 import Winback from "./pages/Winback";
 import Admin from "./pages/Admin";
 import SmsTemplates from "./pages/SmsTemplates";
@@ -73,6 +74,7 @@ const AppContent = ({ session }: { session: Session }) => {
         <Route path="/employees" element={<Employees />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/upcoming-hires" element={<UpcomingHires />} />
+        <Route path="/upcoming-interviews" element={<UpcomingInterviews />} />
         <Route path="/winback" element={<Winback />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/admin" element={<Admin />} />
