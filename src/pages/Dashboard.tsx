@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Inbox, TrendingUp, AlertCircle, UserPlus, Target, Calendar, TrendingDown } from "lucide-react";
+import { Users, Inbox, TrendingUp, AlertCircle, UserPlus, Target, Calendar, TrendingDown, UserX } from "lucide-react";
 import { startOfMonth, endOfMonth, subMonths, format, subYears, addMonths, subDays, startOfDay } from "date-fns";
 import { da } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
@@ -54,6 +56,7 @@ interface DailyApplicationData {
 }
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     last30Days: 0,
     last24Hours: 0,
@@ -63,6 +66,7 @@ const Dashboard = () => {
     trend7Days: 0,
     trend30Days: 0,
   });
+  const [missingStartDateCount, setMissingStartDateCount] = useState(0);
   const [teamHires, setTeamHires] = useState<TeamHire[]>([]);
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
   const [conversionData, setConversionData] = useState<TeamConversion[]>([]);
@@ -77,11 +81,27 @@ const Dashboard = () => {
     fetchTeamHiresTrend();
     fetchForecastData();
     fetchDailyApplications();
+    fetchMissingStartDateCount();
   }, []);
 
   useEffect(() => {
     fetchTeamConversionRates();
   }, [conversionPeriod]);
+
+  const fetchMissingStartDateCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from("applications")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "ansat")
+        .is("hired_date", null);
+
+      if (error) throw error;
+      setMissingStartDateCount(count || 0);
+    } catch (error) {
+      console.error("Error fetching missing start date count:", error);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -673,6 +693,35 @@ const Dashboard = () => {
               </Card>
             ))}
           </div>
+
+          {/* Missing Start Date Warning */}
+          {missingStartDateCount > 0 && (
+            <Card className="mb-6 border-amber-500/50 bg-amber-500/5">
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/10 rounded-full">
+                    <UserX className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-amber-700 dark:text-amber-500">
+                      {missingStartDateCount} ansat{missingStartDateCount !== 1 ? 'te' : ''} mangler opstartsdato
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Gå til ansatte for at sætte opfølgningsdato eller opstartsdato
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10"
+                  onClick={() => navigate('/employees')}
+                >
+                  Gå til ansatte
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Daily Applications Trend */}
           <Card className="mb-6">
