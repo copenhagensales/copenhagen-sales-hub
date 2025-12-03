@@ -32,6 +32,7 @@ export const Sidebar = () => {
   const [newCandidatesCount, setNewCandidatesCount] = useState(0);
   const [winbackCount, setWinbackCount] = useState(0);
   const [overdueContributionCount, setOverdueContributionCount] = useState(0);
+  const [upcomingInterviewsCount, setUpcomingInterviewsCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export const Sidebar = () => {
     fetchNewCandidatesCount();
     fetchWinbackCount();
     fetchOverdueContributionCount();
+    fetchUpcomingInterviewsCount();
     checkAdminRole();
 
     // Subscribe to changes in communication_logs
@@ -72,6 +74,7 @@ export const Sidebar = () => {
           fetchNewCandidatesCount();
           fetchWinbackCount();
           fetchOverdueContributionCount();
+          fetchUpcomingInterviewsCount();
         }
       )
       .subscribe();
@@ -126,6 +129,18 @@ export const Sidebar = () => {
       .in('status', ['ghostet', 'takket_nej', 'interesseret_i_kundeservice']);
 
     setWinbackCount(count || 0);
+  };
+
+  const fetchUpcomingInterviewsCount = async () => {
+    const today = new Date().toISOString();
+    const { count } = await supabase
+      .from('applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'jobsamtale')
+      .gte('interview_date', today)
+      .not('interview_date', 'is', null);
+
+    setUpcomingInterviewsCount(count || 0);
   };
 
   const fetchOverdueContributionCount = async () => {
@@ -189,7 +204,7 @@ export const Sidebar = () => {
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/candidates", icon: Users, label: "Kandidater", badge: newCandidatesCount },
     { to: "/messages", icon: MessageSquare, label: "Beskeder", badge: unreadCount },
-    { to: "/upcoming-interviews", icon: CalendarClock, label: "Kommende samtaler" },
+    { to: "/upcoming-interviews", icon: CalendarClock, label: "Kommende samtaler", badge: upcomingInterviewsCount },
     { to: "/employees", icon: Briefcase, label: "Ansatte", badge: overdueContributionCount },
     { to: "/upcoming-hires", icon: CalendarCheck, label: "Kommende ansættelser" },
     { to: "/winback", icon: RotateCcw, label: "Winback", badge: winbackCount },
