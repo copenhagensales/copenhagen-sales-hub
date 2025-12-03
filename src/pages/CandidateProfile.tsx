@@ -386,6 +386,28 @@ const CandidateProfile = () => {
     }
   };
 
+  const handleSkipHiredDate = async () => {
+    if (!pendingStatusChange) return;
+
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ status: pendingStatusChange.newStatus as any })
+        .eq("id", pendingStatusChange.applicationId);
+
+      if (error) throw error;
+
+      toast.success("Status ændret til Ansat - husk at sætte opfølgningsdato!");
+      setShowHiredDateDialog(false);
+      setPendingStatusChange(null);
+      setHiredDate("");
+      fetchCandidateData();
+    } catch (error: any) {
+      toast.error("Kunne ikke opdatere status");
+      console.error(error);
+    }
+  };
+
   const handleRoleChange = async (applicationId: string, newRole: string) => {
     try {
       const { error } = await supabase
@@ -1290,6 +1312,9 @@ const CandidateProfile = () => {
                 }}
               >
                 Annuller
+              </Button>
+              <Button variant="secondary" onClick={handleSkipHiredDate}>
+                Spring over
               </Button>
               <Button onClick={handleConfirmHiredDate}>Bekræft ansættelse</Button>
             </div>
