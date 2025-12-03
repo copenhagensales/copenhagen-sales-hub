@@ -3,10 +3,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Phone, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Phone, Mail, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface UpcomingInterview {
   id: string;
@@ -39,7 +52,7 @@ const UpcomingInterviews = () => {
 
   const fetchUpcomingInterviews = async () => {
     try {
-      const today = new Date().toISOString();
+      const now = new Date().toISOString();
 
       const { data: applications, error } = await supabase
         .from("applications")
@@ -57,7 +70,7 @@ const UpcomingInterviews = () => {
           )
         `)
         .eq("status", "jobsamtale")
-        .gte("interview_date", today)
+        .gte("interview_date", now)
         .not("interview_date", "is", null)
         .order("interview_date", { ascending: true });
 
@@ -93,6 +106,25 @@ const UpcomingInterviews = () => {
       console.error("Error fetching upcoming interviews:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteInterview = async (applicationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ interview_date: null })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Jobsamtale slettet");
+      fetchUpcomingInterviews();
+    } catch (error) {
+      console.error("Error deleting interview:", error);
+      toast.error("Kunne ikke slette jobsamtale");
     }
   };
 
@@ -173,6 +205,35 @@ const UpcomingInterviews = () => {
                             <span className="text-sm text-muted-foreground">
                               {format(new Date(interview.interview_date), "HH:mm")}
                             </span>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Slet jobsamtale</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Er du sikker på at du vil slette denne jobsamtale for {interview.candidate.first_name} {interview.candidate.last_name}?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuller</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={(e) => handleDeleteInterview(interview.id, e)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Slet
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       ))}
