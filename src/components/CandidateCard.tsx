@@ -490,9 +490,29 @@ export const CandidateCard = ({ candidate, applications, teams = [], subTeams = 
                           <Badge className={roleColors[latestApplication.role]} variant="outline">
                             {roleLabels[latestApplication.role]}
                           </Badge>
-                          <Badge className={statusColors[latestApplication.status]} variant="outline">
-                            {statusLabels[latestApplication.status]}
-                          </Badge>
+                          <Select
+                            value={latestApplication.status}
+                            onValueChange={(value) => handleStatusChange(latestApplication.id, value)}
+                          >
+                            <SelectTrigger 
+                              className={`h-6 w-auto min-w-[120px] text-xs px-2 ${statusColors[latestApplication.status]}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent onClick={(e) => e.stopPropagation()}>
+                              <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
+                              <SelectItem value="startet">Startet</SelectItem>
+                              <SelectItem value="jobsamtale">Jobsamtale</SelectItem>
+                              <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
+                              <SelectItem value="ansat">Ansat</SelectItem>
+                              <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
+                              <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
+                              <SelectItem value="ghostet">Ghostet</SelectItem>
+                              <SelectItem value="takket_nej">Takket nej</SelectItem>
+                              <SelectItem value="interesseret_i_kundeservice">Interesseret i kundeservice</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <Badge variant="secondary" className="text-xs">
                             <Clock className="h-3 w-3 mr-1" />
                             {getTimeSinceApplication(latestApplication.application_date)}
