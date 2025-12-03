@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Phone, PhoneOff, Mic, MicOff, X, Bug, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
+import { Phone, PhoneOff, Mic, MicOff, X, Bug, ChevronDown, ChevronUp, CheckCircle2, Minimize2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,9 +45,10 @@ interface SoftphoneProps {
 export const Softphone = ({ userId, onClose, initialPhoneNumber, twilioManager }: SoftphoneProps) => {
   const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber || "");
   const [isMuted, setIsMuted] = useState(false);
-  const [showDebug, setShowDebug] = useState(true);
+  const [showDebug, setShowDebug] = useState(false);
   const [isTestingCredentials, setIsTestingCredentials] = useState(false);
   const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const { toast } = useToast();
 
@@ -71,6 +72,13 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber, twilioManager }
     }
     if (callStatus === "disconnected") {
       setCallStartTime(null);
+    }
+  }, [callStatus]);
+
+  // Auto-expand on incoming call
+  useEffect(() => {
+    if (callStatus === "incoming") {
+      setIsMinimized(false);
     }
   }, [callStatus]);
 
@@ -174,13 +182,34 @@ export const Softphone = ({ userId, onClose, initialPhoneNumber, twilioManager }
     }
   };
 
+  // Minimized view - small floating badge
+  if (isMinimized) {
+    const isInCall = callStatus === "connecting" || callStatus === "active";
+    return (
+      <Button
+        onClick={() => setIsMinimized(false)}
+        className={`fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 ${
+          isInCall ? "bg-green-600 hover:bg-green-700 animate-pulse" : ""
+        }`}
+        size="icon"
+      >
+        <Phone className="h-6 w-6" />
+      </Button>
+    );
+  }
+
   return (
     <Card className="fixed bottom-4 right-4 w-80 p-4 shadow-lg bg-background border z-50">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold">Softphone</h3>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setIsMinimized(true)} title="Minimér">
+            <Minimize2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4">
