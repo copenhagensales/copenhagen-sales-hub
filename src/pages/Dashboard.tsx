@@ -91,6 +91,29 @@ const Dashboard = () => {
     fetchForecastData();
     fetchDailyApplications();
     fetchMissingStartDateCount();
+
+    // Realtime subscription for new applications
+    const channel = supabase
+      .channel('dashboard-applications')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'applications',
+        },
+        () => {
+          // Refresh stats when applications change
+          fetchStats();
+          fetchDailyApplications();
+          fetchMissingStartDateCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
