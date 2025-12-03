@@ -96,6 +96,7 @@ const statusLabels: Record<string, string> = {
   ghostet: "Ghostet",
   takket_nej: "Takket nej",
   interesseret_i_kundeservice: "Interesseret i kundeservice",
+  jobsamtale: "Jobsamtale",
 };
 
 const roleLabels: Record<string, string> = {
@@ -113,6 +114,7 @@ const statusColors: Record<string, string> = {
   ghostet: "bg-amber-500/10 text-amber-700 border-amber-500/20",
   takket_nej: "bg-purple-500/10 text-purple-700 border-purple-500/20",
   interesseret_i_kundeservice: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  jobsamtale: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",
 };
 
 const roleColors: Record<string, string> = {
@@ -655,6 +657,7 @@ export const CandidateCard = ({ candidate, applications, teams = [], subTeams = 
                             <SelectContent className="bg-popover z-50">
                               <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
                               <SelectItem value="startet">Startet</SelectItem>
+                              <SelectItem value="jobsamtale">Jobsamtale</SelectItem>
                               <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                               <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
                               <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>

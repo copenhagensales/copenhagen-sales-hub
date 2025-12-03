@@ -826,6 +826,7 @@ const CandidateProfile = () => {
                               <SelectContent className="bg-popover z-50">
                                 <SelectItem value="ny_ansoegning">Ny ansøgning</SelectItem>
                                 <SelectItem value="startet">Startet</SelectItem>
+                                <SelectItem value="jobsamtale">Jobsamtale</SelectItem>
                                 <SelectItem value="udskudt_samtale">Udskudt samtale</SelectItem>
                                 <SelectItem value="ikke_kvalificeret">Ikke kvalificeret</SelectItem>
                                 <SelectItem value="ikke_ansat">Ikke ansat</SelectItem>
