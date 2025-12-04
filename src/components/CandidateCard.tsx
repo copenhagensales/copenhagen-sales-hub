@@ -34,9 +34,16 @@ import {
   Clock,
   AlertCircle,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  TimerReset
 } from "lucide-react";
-import { format, differenceInHours, differenceInDays } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { format, differenceInHours, differenceInDays, addHours, addDays, addWeeks } from "date-fns";
 import { da } from "date-fns/locale";
 import { CallStatusDialog } from "@/components/CallStatusDialog";
 import { SendSmsDialog } from "@/components/SendSmsDialog";
@@ -476,6 +483,48 @@ export const CandidateCard = ({ candidate, applications, teams = [], subTeams = 
     }
   };
 
+  const handleDelayApplication = async (applicationId: string, delayType: '24h' | '48h' | '72h' | '1w') => {
+    try {
+      let newDeadline: Date;
+      const now = new Date();
+      
+      switch (delayType) {
+        case '24h':
+          newDeadline = addHours(now, 24);
+          break;
+        case '48h':
+          newDeadline = addHours(now, 48);
+          break;
+        case '72h':
+          newDeadline = addHours(now, 72);
+          break;
+        case '1w':
+          newDeadline = addWeeks(now, 1);
+          break;
+      }
+
+      const { error } = await supabase
+        .from("applications")
+        .update({ deadline: newDeadline.toISOString() })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      const delayLabels = {
+        '24h': '24 timer',
+        '48h': '48 timer',
+        '72h': '72 timer',
+        '1w': '1 uge'
+      };
+      
+      toast.success(`Udsat med ${delayLabels[delayType]}`);
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast.error("Kunne ikke udsætte ansøgning");
+      console.error(error);
+    }
+  };
+
   return (
     <>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -627,6 +676,35 @@ export const CandidateCard = ({ candidate, applications, teams = [], subTeams = 
                     <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
                     <span className="hidden sm:inline ml-1">Slet</span>
                   </Button>
+                  
+                  {latestApplication && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="h-7 md:h-8 text-xs"
+                        >
+                          <TimerReset className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
+                          <span className="hidden sm:inline ml-1">Udsæt</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={() => handleDelayApplication(latestApplication.id, '24h')}>
+                          24 timer
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelayApplication(latestApplication.id, '48h')}>
+                          48 timer
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelayApplication(latestApplication.id, '72h')}>
+                          72 timer
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelayApplication(latestApplication.id, '1w')}>
+                          1 uge
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   
                   {applications.length > 0 && (
                     <CollapsibleTrigger asChild>
