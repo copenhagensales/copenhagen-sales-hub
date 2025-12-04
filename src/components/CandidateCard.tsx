@@ -658,25 +658,6 @@ export const CandidateCard = ({ candidate, applications, teams = [], subTeams = 
                     <Mail className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
                     <span className="hidden sm:inline ml-1">Email</span>
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={handleProfileClick}
-                    className="h-7 md:h-8 text-xs"
-                  >
-                    <User className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
-                    <span className="hidden sm:inline ml-1">Profil</span>
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={handleDeleteClick}
-                    className="h-7 md:h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground"
-                  >
-                    <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
-                    <span className="hidden sm:inline ml-1">Slet</span>
-                  </Button>
-                  
                   {latestApplication && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -705,6 +686,24 @@ export const CandidateCard = ({ candidate, applications, teams = [], subTeams = 
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleProfileClick}
+                    className="h-7 md:h-8 text-xs"
+                  >
+                    <User className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
+                    <span className="hidden sm:inline ml-1">Profil</span>
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleDeleteClick}
+                    className="h-7 md:h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5 md:mr-1.5" />
+                    <span className="hidden sm:inline ml-1">Slet</span>
+                  </Button>
                   
                   {applications.length > 0 && (
                     <CollapsibleTrigger asChild>
