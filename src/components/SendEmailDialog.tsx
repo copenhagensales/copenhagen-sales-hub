@@ -7,9 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Clock } from "lucide-react";
-import { addHours, addWeeks, format } from "date-fns";
-import { da } from "date-fns/locale";
+import { Loader2 } from "lucide-react";
 
 interface EmailTemplate {
   id: string;
@@ -48,7 +46,6 @@ export const SendEmailDialog = ({
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [applicationRole, setApplicationRole] = useState<string>("");
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [scheduleDelay, setScheduleDelay] = useState<string>("now");
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -64,15 +61,12 @@ export const SendEmailDialog = ({
 
     if (open) {
       fetchTemplates();
-      // Set initial content if provided
       if (initialSubject) {
         setSubject(initialSubject);
       }
       if (initialBody) {
         setBody(initialBody);
       }
-      // Reset schedule delay
-      setScheduleDelay("now");
     }
   }, [open, initialSubject, initialBody]);
 
@@ -110,41 +104,6 @@ export const SendEmailDialog = ({
     }
   };
 
-  const getScheduledDateTime = (): string | undefined => {
-    if (scheduleDelay === "now") return undefined;
-    
-    const now = new Date();
-    let scheduledDate: Date;
-    
-    switch (scheduleDelay) {
-      case "24h":
-        scheduledDate = addHours(now, 24);
-        break;
-      case "48h":
-        scheduledDate = addHours(now, 48);
-        break;
-      case "72h":
-        scheduledDate = addHours(now, 72);
-        break;
-      case "1w":
-        scheduledDate = addWeeks(now, 1);
-        break;
-      default:
-        return undefined;
-    }
-    
-    return scheduledDate.toISOString();
-  };
-
-  const getScheduleLabel = (): string => {
-    if (scheduleDelay === "now") return "Send nu";
-    
-    const scheduledDateTime = getScheduledDateTime();
-    if (!scheduledDateTime) return "Send nu";
-    
-    return `Sendes ${format(new Date(scheduledDateTime), "EEEE 'd.' d. MMMM 'kl.' HH:mm", { locale: da })}`;
-  };
-
   const handleSend = async () => {
     if (!subject.trim() || !body.trim()) {
       toast.error("Emne og besked er påkrævet");
@@ -153,8 +112,6 @@ export const SendEmailDialog = ({
 
     setIsSending(true);
     try {
-      const scheduledDateTime = getScheduledDateTime();
-      
       const emailData: any = {
         to: candidateEmail,
         subject: subject.trim(),
@@ -163,10 +120,6 @@ export const SendEmailDialog = ({
 
       if (replyToMessageId) {
         emailData.inReplyTo = replyToMessageId;
-      }
-
-      if (scheduledDateTime) {
-        emailData.scheduledDateTime = scheduledDateTime;
       }
 
       const { data, error } = await supabase.functions.invoke("send-email", {
@@ -187,14 +140,9 @@ export const SendEmailDialog = ({
         created_by: user?.id,
       });
 
-      if (scheduledDateTime) {
-        toast.success(`Email planlagt til ${format(new Date(scheduledDateTime), "d. MMM 'kl.' HH:mm", { locale: da })}`);
-      } else {
-        toast.success("Email sendt til " + candidateName);
-      }
+      toast.success("Email sendt til " + candidateName);
       setSubject("");
       setBody("");
-      setScheduleDelay("now");
       onOpenChange(false);
       onEmailSent?.();
     } catch (error) {
@@ -253,28 +201,6 @@ export const SendEmailDialog = ({
               className="resize-none"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="schedule">Udsæt afsendelse</Label>
-            <Select value={scheduleDelay} onValueChange={setScheduleDelay}>
-              <SelectTrigger id="schedule">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="now">Send nu</SelectItem>
-                <SelectItem value="24h">24 timer</SelectItem>
-                <SelectItem value="48h">48 timer</SelectItem>
-                <SelectItem value="72h">72 timer</SelectItem>
-                <SelectItem value="1w">1 uge</SelectItem>
-              </SelectContent>
-            </Select>
-            {scheduleDelay !== "now" && (
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {getScheduleLabel()}
-              </p>
-            )}
-          </div>
           
           <div className="flex justify-end gap-2">
             <Button
@@ -286,7 +212,7 @@ export const SendEmailDialog = ({
             </Button>
             <Button onClick={handleSend} disabled={isSending || !subject.trim() || !body.trim()}>
               {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {scheduleDelay === "now" ? "Send Email" : "Planlæg Email"}
+              Send Email
             </Button>
           </div>
         </div>

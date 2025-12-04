@@ -10,7 +10,6 @@ interface EmailRequest {
   subject: string;
   body: string;
   inReplyTo?: string;
-  scheduledDateTime?: string;
 }
 
 serve(async (req) => {
@@ -19,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, body, inReplyTo, scheduledDateTime }: EmailRequest = await req.json();
+    const { to, subject, body, inReplyTo }: EmailRequest = await req.json();
     
     if (!to || !subject || !body) {
       return new Response(
@@ -67,13 +66,6 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
-
-    // Note: Scheduled sending requires Mail.ReadWrite permission which may not be available
-    // For now, we'll ignore the scheduledDateTime and send immediately
-    // If you need scheduled sending, add Mail.ReadWrite permission to your Microsoft Graph app
-    if (scheduledDateTime) {
-      console.log(`Scheduled sending requested for ${scheduledDateTime}, but sending immediately (Mail.ReadWrite permission required for scheduling)`);
-    }
 
     // Send email immediately via Microsoft Graph API
     console.log(`Sending email to ${to}`);
