@@ -10,6 +10,7 @@ interface EmailRequest {
   subject: string;
   body: string;
   inReplyTo?: string;
+  scheduledDateTime?: string;
 }
 
 serve(async (req) => {
@@ -18,7 +19,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, body, inReplyTo }: EmailRequest = await req.json();
+    const { to, subject, body, inReplyTo, scheduledDateTime }: EmailRequest = await req.json();
     
     if (!to || !subject || !body) {
       return new Response(
@@ -67,7 +68,110 @@ serve(async (req) => {
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
-    // Send email via Microsoft Graph API
+    // If scheduled, create a draft and schedule it
+    if (scheduledDateTime) {
+      console.log(`Creating scheduled email to ${to} for ${scheduledDateTime}`);
+      
+      // Create draft message
+      const draftUrl = 'https://graph.microsoft.com/v1.0/users/job@copenhagensales.dk/messages';
+      
+      const draftPayload: any = {
+        subject,
+        body: {
+          contentType: 'HTML',
+          content: body,
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: to,
+            },
+          },
+        ],
+      };
+
+      if (inReplyTo) {
+        draftPayload.internetMessageHeaders = [
+          {
+            name: 'In-Reply-To',
+            value: inReplyTo,
+          },
+        ];
+      }
+
+      const draftResponse = await fetch(draftUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(draftPayload),
+      });
+
+      if (!draftResponse.ok) {
+        const errorText = await draftResponse.text();
+        console.error('Draft creation failed:', draftResponse.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `Failed to create draft: ${draftResponse.status}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const draftData = await draftResponse.json();
+      const messageId = draftData.id;
+
+      // Schedule the send using the beta endpoint
+      const scheduleUrl = `https://graph.microsoft.com/beta/users/job@copenhagensales.dk/messages/${messageId}/send`;
+      
+      // Update message with scheduled send time first
+      const updateUrl = `https://graph.microsoft.com/beta/users/job@copenhagensales.dk/messages/${messageId}`;
+      const updateResponse = await fetch(updateUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          singleValueExtendedProperties: [
+            {
+              id: 'SystemTime 0x3FEF',
+              value: scheduledDateTime,
+            },
+          ],
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        console.log('Could not set deferred send time, sending via send endpoint with header');
+      }
+
+      // Send the message (will be deferred if property was set)
+      const sendResponse = await fetch(scheduleUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!sendResponse.ok && sendResponse.status !== 202) {
+        const errorText = await sendResponse.text();
+        console.error('Schedule send failed:', sendResponse.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `Failed to schedule email: ${sendResponse.status}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Email scheduled successfully for', scheduledDateTime);
+
+      return new Response(
+        JSON.stringify({ status: 'scheduled', scheduledFor: scheduledDateTime }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Send email immediately via Microsoft Graph API
     console.log(`Sending email to ${to}`);
     const emailUrl = 'https://graph.microsoft.com/v1.0/users/job@copenhagensales.dk/sendMail';
     

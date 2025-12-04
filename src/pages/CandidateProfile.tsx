@@ -30,18 +30,11 @@ import {
   Plus,
   Edit,
   MessageCircle,
-  TimerReset,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format, addHours, addWeeks } from "date-fns";
+import { format } from "date-fns";
 import { da } from "date-fns/locale";
 import { toast } from "sonner";
 import { Device, Call } from "@twilio/voice-sdk";
@@ -550,47 +543,6 @@ const CandidateProfile = () => {
     }
   };
 
-  const handleDelayApplication = async (applicationId: string, delayType: '24h' | '48h' | '72h' | '1w') => {
-    try {
-      let newDeadline: Date;
-      const now = new Date();
-      
-      switch (delayType) {
-        case '24h':
-          newDeadline = addHours(now, 24);
-          break;
-        case '48h':
-          newDeadline = addHours(now, 48);
-          break;
-        case '72h':
-          newDeadline = addHours(now, 72);
-          break;
-        case '1w':
-          newDeadline = addWeeks(now, 1);
-          break;
-      }
-
-      const { error } = await supabase
-        .from("applications")
-        .update({ deadline: newDeadline.toISOString() })
-        .eq("id", applicationId);
-
-      if (error) throw error;
-
-      const delayLabels = {
-        '24h': '24 timer',
-        '48h': '48 timer',
-        '72h': '72 timer',
-        '1w': '1 uge'
-      };
-      
-      toast.success(`Udsat med ${delayLabels[delayType]}`);
-      fetchCandidateData();
-    } catch (error: any) {
-      toast.error("Kunne ikke udsætte ansøgning");
-      console.error(error);
-    }
-  };
 
   if (loading) {
     return (
@@ -653,30 +605,6 @@ const CandidateProfile = () => {
                 <Mail className="h-4 w-4 md:mr-2" />
                 <span className="hidden sm:inline ml-1">Email</span>
               </Button>
-              {applications.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="flex-1 md:flex-initial">
-                      <TimerReset className="h-4 w-4 md:mr-2" />
-                      <span className="hidden sm:inline ml-1">Udsæt</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={() => handleDelayApplication(applications[0].id, '24h')}>
-                      24 timer
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelayApplication(applications[0].id, '48h')}>
-                      48 timer
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelayApplication(applications[0].id, '72h')}>
-                      72 timer
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelayApplication(applications[0].id, '1w')}>
-                      1 uge
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
               <Button
                 variant="outline"
                 onClick={() => {
