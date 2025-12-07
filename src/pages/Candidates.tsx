@@ -164,29 +164,30 @@ const Candidates = () => {
 
   const fetchCandidates = async () => {
     try {
-      const { data: candidatesData, error: candidatesError } = await supabase
+      // Single query with join instead of N+1 queries
+      const { data, error } = await supabase
         .from("candidates")
-        .select("*")
+        .select(`
+          *,
+          applications (
+            id, role, status, application_date, deadline, next_step, source, team_id, notes
+          )
+        `)
         .order("created_at", { ascending: false });
 
-      if (candidatesError) throw candidatesError;
+      if (error) throw error;
 
-      const candidatesWithApplications = await Promise.all(
-        (candidatesData || []).map(async (candidate) => {
-          const { data: applications, error: appsError } = await supabase
-            .from("applications")
-            .select("id, role, status, application_date, deadline, next_step, source, team_id, notes")
-            .eq("candidate_id", candidate.id)
-            .order("application_date", { ascending: false });
-
-          if (appsError) throw appsError;
-
-          return {
-            candidate,
-            applications: applications || [],
-          };
-        })
-      );
+      const candidatesWithApplications = (data || []).map((candidate) => {
+        const { applications, ...candidateData } = candidate;
+        // Sort applications by date descending
+        const sortedApps = (applications || []).sort((a: Application, b: Application) => 
+          new Date(b.application_date).getTime() - new Date(a.application_date).getTime()
+        );
+        return {
+          candidate: candidateData as Candidate,
+          applications: sortedApps as Application[],
+        };
+      });
 
       setCandidatesWithApps(candidatesWithApplications);
     } catch (error: any) {
